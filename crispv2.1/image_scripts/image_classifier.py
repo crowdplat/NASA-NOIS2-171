@@ -2,12 +2,15 @@ from monai.networks.nets import DenseNet121
 import torch.nn as nn
 import torch
 
-class ImageClassifier(nn.Module):
+class TransferLearningImageClassifier(nn.Module):
     """ Image Classification Model using MONAI DenseNet121 """
 
     def __init__(self, num_classes=1):
-        super(ImageClassifier, self).__init__()
-        self.model = DenseNet121(spatial_dims=2, in_channels=1, out_channels=num_classes)  # Grayscale input
+        super(TransferLearningImageClassifier, self).__init__()
+        self.model = DenseNet121(spatial_dims=2, in_channels=1, out_channels=num_classes)
+        
+        # Modify the pooling layer to ensure fixed feature extraction
+        self.model.features[-1] = nn.AdaptiveAvgPool2d((2, 2))  # Replace last pooling layer
 
     def forward(self, x):
         return self.model(x)
@@ -15,26 +18,25 @@ class ImageClassifier(nn.Module):
 class CNN_Scratch(nn.Module):
     def __init__(self):
         super(CNN_Scratch, self).__init__()
-        image_size = (224, 224)
-
         self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(32)
-        self.pool1 = nn.MaxPool2d(2, 2)  # Add pooling here
+        self.pool1 = nn.MaxPool2d(2, 2)  # Downsampling
 
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(64)
-        self.pool2 = nn.MaxPool2d(2, 2)  # Add pooling here
+        self.pool2 = nn.MaxPool2d(2, 2)  # Downsampling
 
         self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.bn3 = nn.BatchNorm2d(128)
-        self.pool3 = nn.MaxPool2d(2, 2)  # Add pooling here
+        self.pool3 = nn.MaxPool2d(2, 2)  # Downsampling
 
         self.conv4 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        self.pool4 = nn.MaxPool2d(2, 2)  # Add pooling here
+        self.pool4 = nn.MaxPool2d(2, 2)  # Downsampling
 
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((2, 2))  # Ensure same feature size as DenseNet
         self.dropout = nn.Dropout(0.25)
-        self.flattened_size = 256 * (image_size[0] // 16) * (image_size[1] // 16)
-        self.fc1 = nn.Linear(self.flattened_size, 128)
+
+        self.fc1 = nn.Linear(256 * 2 * 2, 128)  # Adjusted for the new feature size
         self.fc2 = nn.Linear(128, 1)
 
     def forward(self, x):
@@ -42,8 +44,13 @@ class CNN_Scratch(nn.Module):
         x = self.pool2(torch.relu(self.bn2(self.conv2(x))))
         x = self.pool3(torch.relu(self.bn3(self.conv3(x))))
         x = self.pool4(torch.relu(self.conv4(x)))
-        x = x.view(-1, self.flattened_size)
-        x = torch.relu(self.fc1(x))
-        x = self.dropout(x)
-        # x = torch.sigmoid(self.fc2(x))
-        return self.fc2(x)
+
+        x = self.global_avg_pool(x)  # Adaptive pooling ensures fixed feature size
+        x = torch.flatten(x, start_dim=1)  # Flatten correctly
+        # print(f"Flattened feature size: {x.shape}")  # Debug print
+
+        x = self.dropout(torch.relu(self.fc1(x)))
+        x = self.fc2(x)
+        return x
+
+

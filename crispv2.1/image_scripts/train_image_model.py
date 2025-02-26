@@ -2,15 +2,17 @@ import numpy as np
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
-import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
-
-from image_scripts.image_classifier import ImageClassifier, CNN_Scratch 
+import os
+from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_Scratch 
 import json
+from sklearn.metrics import roc_auc_score
+from sklearn.utils.class_weight import compute_class_weight
+
 
 class ImageDataset(Dataset):
     """ Custom Dataset for Grayscale Image Classification """
@@ -26,12 +28,13 @@ class ImageDataset(Dataset):
         import pandas as pd  # Import here to avoid unnecessary dependencies
         self.image_dir = image_dir
         self.data = pd.read_csv(labels_csv)
+        self.image_shape = (224, 224)
         
         # Standard transform for both train and validation sets
         base_transform = transforms.Compose([
-            transforms.Resize((224, 224)),  # Resize for model
+            transforms.Resize(self.image_shape),  # Resize for model
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.5], std=[0.5])  # Standard normalization for grayscale
+            transforms.Normalize(mean=[0.5], std=[0.5])
         ])
         
         # Augmentations applied only to training data
@@ -39,6 +42,7 @@ class ImageDataset(Dataset):
             print("Applying training image augmentation . . .")
             self.transform = transforms.Compose([
                 transforms.RandomRotation(degrees=10),
+                transforms.RandomResizedCrop(size=self.image_shape, scale=(0.8, 1.0)),
                 transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.5),
                 *base_transform.transforms  # Append base transforms
             ])
@@ -88,7 +92,7 @@ def save_model(model, optimizer, model_save_path, save_optimizer=False):
 
     torch.save(save_dict, model_save_path)
     print(f"Model saved successfully to {model_save_path}")
-    
+
 
 def train_image_model(config):
     """ Train an image classification model based on config settings """
@@ -103,10 +107,10 @@ def train_image_model(config):
     # Extract paths and parameters
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
-    model_type = config["image_data"].get("model_type", "CNN_Scratch")  # Default to CNN_Scratch
+    model_type = config["image_data"].get("model_type", "DenseNet121")  # Default to CNN_Scratch
     batch_size = config["image_data"].get("batch_size", 16)
     learning_rate = config["image_data"].get("learning_rate", 0.001)
-    num_epochs = config["image_data"].get("num_epochs", 10)
+    num_epochs = config["image_data"].get("num_epochs", 100)
     model_save_path = config["image_data"]["model_save_path"]
     split_ratio = config["image_data"].get("split_ratio", 0.8)  # Default: 80% train, 20% val
     augmentation = config["image_data"]["augmentation"]
@@ -132,19 +136,29 @@ def train_image_model(config):
     # Choose correct model architecture
     if model_type == "DenseNet121":
         print(f"Running image model {model_type}")
-        model = ImageClassifier().to(device)
+        model = TransferLearningImageClassifier().to(device)
     else:
         print(f"Running image model {model_type}")
         model = CNN_Scratch().to(device)
 
-    criterion = nn.BCEWithLogitsLoss()
+    # Compute class weights (new code)
+    train_labels_list = [label for _, label in train_dataset]
+    train_labels_array = np.array(train_labels_list)
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(train_labels_array),
+        y=train_labels_array
+    )
+    pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     # Training loop
     for epoch in range(num_epochs):
         model.train()
         for images, labels in train_loader:
-            images, labels = images.to(torch.device("cuda")), labels.to(torch.device("cuda"))
+            images, labels = images.to(device), labels.to(device)
             optimizer.zero_grad()
             outputs = model(images).squeeze()
             loss = criterion(outputs, labels)
@@ -155,20 +169,40 @@ def train_image_model(config):
         model.eval()
         correct = 0
         total = 0
+        all_labels = []
+        all_probs = []
+
         with torch.no_grad():
             for images, labels in val_loader:
-                images, labels = images.to(torch.device("cuda")), labels.to(torch.device("cuda"))
+                images, labels = images.to(device), labels.to(device)
                 outputs = model(images).squeeze()
-                predictions = (torch.sigmoid(outputs) > 0.5).float()
+                probs = torch.sigmoid(outputs)  # Convert logits to probabilities
+                predictions = (probs > 0.5).float()  # Convert probabilities to binary predictions
+
                 correct += (predictions == labels).sum().item()
                 total += labels.size(0)
 
-        if(config["verbose"]==1):
-            print(f"Epoch {epoch+1}/{num_epochs}: Validation Accuracy = {correct / total:.4f}")
+                # Store probabilities and labels for AUC computation
+                all_probs.extend(probs.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
 
-    # if(config["verbose"]==1):
-    #         print(f"Validation Accuracy = {correct / total:.4f}")
+        # Compute Accuracy
+        accuracy = correct / total
+
+        # Compute AUC Score (Only if both classes exist in validation set)
+        try:
+            auc_score = roc_auc_score(all_labels, all_probs)
+        except ValueError:
+            auc_score = None  # AUC can't be computed if only one class is present
+
+        if config["verbose"] == 1:
+            print(f"Epoch {epoch+1}/{num_epochs}: Validation Accuracy = {accuracy:.4f}")
+            if auc_score is not None:
+                print(f"Epoch {epoch+1}/{num_epochs}: Validation AUC Score = {auc_score:.4f}")
+            else:
+                print(f"Epoch {epoch+1}/{num_epochs}: AUC Score could not be computed (only one class in validation set).")
 
     # Save the trained model
     save_model(model, optimizer, model_save_path)
 
+    return model

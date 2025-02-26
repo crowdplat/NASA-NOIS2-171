@@ -4,7 +4,7 @@ import pandas as pd
 from torchvision import transforms
 from PIL import Image
 import os
-from image_scripts.image_classifier import CNN_Scratch, ImageClassifier
+from image_scripts.image_classifier import CNN_Scratch, TransferLearningImageClassifier
 
 def extract_image_features(config):
     """ Extract CNN feature embeddings from images and save as tabular data """
@@ -21,7 +21,7 @@ def extract_image_features(config):
 
     # Choose correct model architecture
     if model_type == "DenseNet121":
-        model = ImageClassifier().to(device)
+        model = TransferLearningImageClassifier().to(device)
     else:
         model = CNN_Scratch().to(device)  # Default to CNN_Scratch
 
@@ -78,10 +78,10 @@ def extract_image_features(config):
 
         with torch.no_grad():
             features = feature_extractor(image)  # Extract features
+
             
         # Fix: Ensure the feature vector is correctly flattened
-        # features = features.view(features.size(0), -1)  # Flatten tensor
-        features = torch.flatten(features, start_dim=1)  # Fix flattening
+        features = torch.flatten(features, start_dim=1)  # Flatten tensor
         return features.cpu().numpy().flatten()  # Convert to NumPy 1D vector
     
     
@@ -91,9 +91,6 @@ def extract_image_features(config):
     # Extract features for each image
     feature_list = []
     for idx, row in df.iterrows():
-        # img_filename = row.iloc[0]  # First column: image filename
-        # label = row.iloc[1]  # Second column: label
-        
         sample = row['sample']  # 1st column: sample name
         img_filename = row['image_name']  # 2nd column: image filename
         label = row['image_label']  # 3rd column: label
