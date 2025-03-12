@@ -5,14 +5,14 @@ from PIL import Image
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset, random_split
 from torchvision import transforms
 import os
 from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_Scratch 
 import json
 from sklearn.metrics import roc_auc_score
 from sklearn.utils.class_weight import compute_class_weight
-
+import pandas as pd
 
 class ImageDataset(Dataset):
     """ Custom Dataset for Grayscale Image Classification """
@@ -25,7 +25,7 @@ class ImageDataset(Dataset):
             transform (callable, optional): Transform to be applied on an image.
             augment (bool): Whether to apply data augmentation.
         """
-        import pandas as pd  # Import here to avoid unnecessary dependencies
+
         self.image_dir = image_dir
         self.data = pd.read_csv(labels_csv)
         self.image_shape = (224, 224)
@@ -42,7 +42,7 @@ class ImageDataset(Dataset):
             print("Applying training image augmentation . . .")
             self.transform = transforms.Compose([
                 transforms.RandomRotation(degrees=10),
-                transforms.RandomResizedCrop(size=self.image_shape, scale=(0.8, 1.0)),
+                transforms.RandomResizedCrop(size=self.image_shape, scale=(0.9, 1.0)),
                 transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.5),
                 *base_transform.transforms  # Append base transforms
             ])
@@ -52,21 +52,20 @@ class ImageDataset(Dataset):
     def __len__(self):
         return len(self.data)
 
-    def load_image(self, img_path):
-        """ Load a grayscale image from a file or `.npy` array. """
-        if img_path.endswith(".npy"):  # Load .npy file
-            image = np.load(img_path)  # Load NumPy array
+    def load_image(self, image_path):
+        """Loads an image from file (.png, .jpg) or `.npy` array (NumPy)."""
+        if image_path.endswith(".npy"):
+            image = np.load(image_path)  # Load NumPy array
             if image.ndim != 2:  # Ensure it's grayscale
-                raise ValueError(f"Unsupported .npy shape {image.shape} for grayscale image {img_path}")
-            image = Image.fromarray(image.astype(np.uint8), mode="L")  # Convert NumPy array to PIL grayscale
+                raise ValueError(f"Invalid shape {image.shape} for grayscale image {image_path}")
+            # return Image.fromarray(image.astype(np.uint8)*255, mode="L")  # Convert to PIL grayscale
+            return Image.fromarray((image * 255).astype(np.uint8), mode="L")  # Convert to PIL grayscale
         else:
-            image = Image.open(img_path).convert("L")  # Load standard images as grayscale
-
-        return image
+            return Image.open(image_path).convert("L")  # Load regular image file
 
     def __getitem__(self, idx):
-        img_name = os.path.join(self.image_dir, self.data.loc[idx, 'image_name'])  # Get image filename
-        label = torch.tensor(self.data.loc[idx, 'image_label'], dtype=torch.float32)  # Get label
+        img_name = os.path.join(self.image_dir, self.data.iloc[idx]['image_name']) # Get image filename
+        label = torch.tensor(self.data.loc[idx, 'label'], dtype=torch.float32)  # Get label
 
         image = self.load_image(img_name)  # Load image
         image = self.transform(image)  # Apply transforms
@@ -206,3 +205,169 @@ def train_image_model(config):
     save_model(model, optimizer, model_save_path)
 
     return model
+
+def train_image_model_loocv(config):
+    """
+    Train an image classification model using Leave-One-Out Cross Validation (LOOCV).
+    
+    For each sample in the dataset, the model is trained on all other samples and evaluated
+    on the held-out sample. Performance metrics are printed for each fold. After LOOCV is completed,
+    the model is retrained on the full dataset and saved to disk.
+
+    Args:
+        config (dict or str): Configuration dictionary or path to a JSON file.
+    """
+
+    # If config is a file path, load it as a dictionary.
+    if isinstance(config, dict):
+        cfg = config
+    else:
+        with open(config, "r") as f:
+            cfg = json.load(f)
+    
+    # Extract parameters and paths
+    image_dir = cfg["image_data"]["image_dir"]
+    labels_csv = cfg["image_data"]["labels_csv"]
+    model_type = cfg["image_data"].get("model_type", "DenseNet121")
+    batch_size = cfg["image_data"].get("batch_size", 16)
+    learning_rate = cfg["image_data"].get("learning_rate", 0.001)
+    num_epochs = cfg["image_data"].get("num_epochs", 100)
+    augmentation = cfg["image_data"]["augmentation"]
+    model_save_path = cfg["image_data"]["model_save_path"]
+    verbose = cfg.get("verbose", 0)
+    
+    # Load CSV to determine dataset size.
+    labels_df = pd.read_csv(labels_csv)
+    total_samples = len(labels_df)
+    
+    # Create datasets: training with augmentation and validation without.
+    train_dataset_full = ImageDataset(image_dir, labels_csv, augment=augmentation)
+    val_dataset_full = ImageDataset(image_dir, labels_csv, augment=False)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    fold_accuracies = []
+    all_true_labels = []
+    all_pred_probs = []
+    
+    # LOOCV: iterate over each sample as the held-out validation set.
+    for i in range(total_samples):
+        if verbose:
+            print(f"Starting fold {i+1}/{total_samples}")
+        # All indices except the i-th sample for training; the i-th for validation.
+        train_indices = list(range(total_samples))
+        train_indices.remove(i)
+        val_indices = [i]
+        
+        train_subset = Subset(train_dataset_full, train_indices)
+        val_subset = Subset(val_dataset_full, val_indices)
+        
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
+        
+        # Initialize the model for this fold.
+        if model_type == "DenseNet121":
+            model = TransferLearningImageClassifier().to(device)
+        else:
+            model = CNN_Scratch().to(device)
+        
+        # Compute class weights based on training subset.
+        train_labels_list = [label.item() for _, label in train_subset]
+        train_labels_array = np.array(train_labels_list)
+        classes = np.unique(train_labels_array)
+        if len(classes) > 1:
+            class_weights = compute_class_weight(
+                class_weight='balanced',
+                classes=classes,
+                y=train_labels_array
+            )
+            pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+        else:
+            pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+        
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        
+        # Training loop for the current fold.
+        for epoch in range(num_epochs):
+            model.train()
+            for images, labels in train_loader:
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images).squeeze()
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+        
+        # Evaluate on the held-out sample.
+        model.eval()
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images).squeeze()
+                prob = torch.sigmoid(outputs)
+                prediction = (prob > 0.5).float()
+                correct = (prediction == labels).item()
+                fold_accuracies.append(correct)
+                all_true_labels.append(labels.item())
+                all_pred_probs.append(prob.item())
+                if verbose:
+                    print(f"Fold {i+1}: True Label: {labels.item()}, Predicted Prob: {prob.item()}, Accuracy: {correct}")
+    
+    # Print aggregated LOOCV metrics.
+    avg_accuracy = np.mean(fold_accuracies)
+    try:
+        auc_score = roc_auc_score(all_true_labels, all_pred_probs)
+    except ValueError:
+        auc_score = None
+    print(f"LOOCV Average Accuracy: {avg_accuracy:.4f}")
+    if auc_score is not None:
+        print(f"LOOCV AUC Score: {auc_score:.4f}")
+    else:
+        print("LOOCV AUC Score could not be computed (only one class present across folds).")
+    
+    # --- Retrain Final Model on Full Dataset and Save ---
+    print("Training final model on full dataset...")
+    # Use the training dataset (with augmentation if enabled).
+    full_loader = DataLoader(train_dataset_full, batch_size=batch_size, shuffle=True)
+    
+    if model_type == "DenseNet121":
+        final_model = TransferLearningImageClassifier().to(device)
+    else:
+        final_model = CNN_Scratch().to(device)
+    
+    # Compute class weights for the full dataset.
+    all_labels_list = [label.item() for _, label in train_dataset_full]
+    all_labels_array = np.array(all_labels_list)
+    classes = np.unique(all_labels_array)
+    if len(classes) > 1:
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=classes,
+            y=all_labels_array
+        )
+        pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+    else:
+        pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+    
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = optim.Adam(final_model.parameters(), lr=learning_rate)
+    
+    for epoch in range(num_epochs):
+        final_model.train()
+        for images, labels in full_loader:
+            images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = final_model(images).squeeze()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+        if verbose:
+            print(f"Final model training - Epoch {epoch+1}/{num_epochs} completed.")
+    
+    # Save the final model.
+    save_model(final_model, optimizer, model_save_path)
+    print("Final model trained on the full dataset has been saved.")
+
+    return final_model
+
