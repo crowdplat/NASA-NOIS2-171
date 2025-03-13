@@ -5,7 +5,7 @@
 
     "verbose": 1,
     "causalnex_frm": 1, 
-    "test_val_split": [0.3, 0.2],
+    "test_val_split": [0.2, 0.2],
     "data_options": {
         "dataset_fp": "data/rr3_dataset/merged_features.pkl",
         "subject_keys": "sample",
@@ -16,24 +16,33 @@
 	"output_data_regime": "binary"
     },
     "feature_selection_options": {
-        "max_features": 1000,
+        "max_features": 20,
         "verbose": 0,
-        "seed": 100
+        "seed": 12
     },
     "ensemble_options": {
-        "models": ["RF"]
+        
+        "models": ["ERM", "RF", "ICP", "NLICP"]
     },
+    
     "image_data": {
-        "image_dir": "data/rr3_dataset/preprocessed_images/",
+        "image_dir": "data/rr3_dataset/preprocessed_images_2/",
         "labels_csv": "data/rr3_dataset/csvs/rr3_image_dataset_labels.csv",
-        "model_type": "DenseNet121",
-        "augmentation": false, 
-        "batch_size": 16,
-        "learning_rate": 0.0001,
+        "model_type": "CNN_Scratch",
+        "image_model_training_type": "train_test_split", 
+        "split_ratio": 0.85,
+        "augmentation": true, 
+        "batch_size": 32,
+        "learning_rate": 0.00001,
         "num_epochs": 500,
-        "split_ratio": 0.8,
         "model_save_path": "image_model_saved/image_model_rr3.pth",
-        "image_features_save_path": "data/rr3_dataset/image_features.pkl",
-        "tabular_features_path": "data/rr3_dataset/GLDS-352_rna_seq_Normalized_Counts.pickle"
+        "gradcam_features_save_path": "data/rr3_dataset/gradcam_features.pkl",
+        "tabular_features_path": "data/rr3_dataset/GLDS-352_rna_seq_Normalized_Counts.pickle",
+
+        "image_model_gradcam": {
+            "apply_gradcam": true,
+            "gradcam_output_save_path": "data/rr3_dataset/gradcam_outputs"
+        }
+        
     }
 }
