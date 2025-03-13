@@ -230,7 +230,7 @@ def train_image_model_loocv(config):
     labels_csv = cfg["image_data"]["labels_csv"]
     model_type = cfg["image_data"].get("model_type", "DenseNet121")
     batch_size = cfg["image_data"].get("batch_size", 16)
-    learning_rate = cfg["image_data"].get("learning_rate", 0.001)
+    learning_rate = cfg["image_data"].get("learning_rate", 0.0001)
     num_epochs = cfg["image_data"].get("num_epochs", 100)
     augmentation = cfg["image_data"]["augmentation"]
     model_save_path = cfg["image_data"]["model_save_path"]

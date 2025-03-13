@@ -94,7 +94,6 @@ def save_gradcam_output(config, model_2):
 
     # Loop through test images in the dataset
     for index, row in labels_df.iterrows():
-        # if row['image_label'] == 1:  # Apply Grad-CAM only for positive class images
         # Load the test image
         input_image = np.load(os.path.join(image_dir, row['image_name']))
         # Convert to PIL Image for transformations
@@ -115,7 +114,9 @@ def save_gradcam_output(config, model_2):
         plt.colorbar()
 
         # Save the image
-        save_path = os.path.join(gradcam_output_save_path, f"gradcam_{os.path.basename(row['image_name'].split('.')[0])}.png")
+        save_path = os.path.join(gradcam_output_save_path, row['image_name'].split(os.path.sep)[0], f"gradcam_{os.path.basename(row['image_name'].split('.')[0])}.png")
+        # Create the target directory if it doesn't exist
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)
         plt.close()
         print(f"Saved Grad-CAM to {save_path}")

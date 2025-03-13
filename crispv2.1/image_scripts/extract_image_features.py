@@ -199,12 +199,11 @@ def extract_gradcam_features(model, image_path, target_layer, visualize=False):
 
 def extract_image_features(config, model):
     """ Extract CNN feature embeddings and Grad-CAM features from images """
-
+    
     # Extract paths and parameters from config
     model_save_path = config["image_data"]["model_save_path"]
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
-    image_features_save_path = config["image_data"]["image_features_save_path"]
     gradcam_features_save_path = config["image_data"]["gradcam_features_save_path"]
     model_type = config["image_data"].get("model_type", "CNN_Scratch")
 
