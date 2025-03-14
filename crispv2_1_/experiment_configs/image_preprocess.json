@@ -1,5 +1,0 @@
-{
-    "image_folder": "data/rr3_dataset/img_input",
-    "preprocessed_output_folder": "data/rr3_dataset/preprocessed_images_2",
-    "environments": "env_split"
-}
