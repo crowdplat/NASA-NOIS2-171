@@ -1,0 +1,373 @@
+import numpy as np
+from torch.utils.data import Dataset
+from torchvision import transforms
+from PIL import Image
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Subset, random_split
+from torchvision import transforms
+import os
+from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_Scratch 
+import json
+from sklearn.metrics import roc_auc_score
+from sklearn.utils.class_weight import compute_class_weight
+import pandas as pd
+
+class ImageDataset(Dataset):
+    """ Custom Dataset for Grayscale Image Classification """
+
+    def __init__(self, image_dir, labels_csv, transform=None, augment=False):
+        """
+        Args:
+            image_dir (str): Path to the directory containing images (.png, .jpg, or .npy).
+            labels_csv (str): Path to CSV file with image filenames and labels.
+            transform (callable, optional): Transform to be applied on an image.
+            augment (bool): Whether to apply data augmentation.
+        """
+
+        self.image_dir = image_dir
+        self.data = pd.read_csv(labels_csv)
+        self.image_shape = (224, 224)
+        
+        # Standard transform for both train and validation sets
+        base_transform = transforms.Compose([
+            transforms.Resize(self.image_shape),  # Resize for model
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5], std=[0.5])
+        ])
+        
+        # Augmentations applied only to training data
+        if augment:
+            print("Applying training image augmentation . . .")
+            self.transform = transforms.Compose([
+                transforms.RandomRotation(degrees=10),
+                transforms.RandomResizedCrop(size=self.image_shape, scale=(0.9, 1.0)),
+                transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.5),
+                *base_transform.transforms  # Append base transforms
+            ])
+        else:
+            self.transform = base_transform  # Use only base transform
+
+    def __len__(self):
+        return len(self.data)
+
+    def load_image(self, image_path):
+        """Loads an image from file (.png, .jpg) or `.npy` array (NumPy)."""
+        if image_path.endswith(".npy"):
+            image = np.load(image_path)  # Load NumPy array
+            if image.ndim != 2:  # Ensure it's grayscale
+                raise ValueError(f"Invalid shape {image.shape} for grayscale image {image_path}")
+            # return Image.fromarray(image.astype(np.uint8)*255, mode="L")  # Convert to PIL grayscale
+            return Image.fromarray((image * 255).astype(np.uint8), mode="L")  # Convert to PIL grayscale
+        else:
+            return Image.open(image_path).convert("L")  # Load regular image file
+
+    def __getitem__(self, idx):
+        img_name = os.path.join(self.image_dir, self.data.iloc[idx]['image_name']) # Get image filename
+        label = torch.tensor(self.data.loc[idx, 'label'], dtype=torch.float32)  # Get label
+
+        image = self.load_image(img_name)  # Load image
+        image = self.transform(image)  # Apply transforms
+
+        return image, label
+    
+
+def save_model(model, optimizer, model_save_path, save_optimizer=False):
+    """ Saves the trained model and optimizer state (if required). """
+
+    # Extract the directory path from the save path
+    model_dir = os.path.dirname(model_save_path)
+
+    # Ensure the directory exists
+    if not os.path.exists(model_dir):
+        print(f"Warning: Directory '{model_dir}' does not exist. Creating it now...")
+        os.makedirs(model_dir)  # Create directory
+
+    # Save the model (with or without optimizer)
+    save_dict = {"model_state_dict": model.state_dict()}
+    if save_optimizer:
+        save_dict["optimizer_state_dict"] = optimizer.state_dict()
+
+    torch.save(save_dict, model_save_path)
+    print(f"Model saved successfully to {model_save_path}")
+
+
+def train_image_model(config):
+    """ Train an image classification model based on config settings """
+
+    # If config is a dictionary, use it directly. Otherwise, load from file.
+    if isinstance(config, dict):
+        pass  # Use the given dictionary
+    else:
+        with open(config, "r") as f:
+            config = json.load(f)
+    
+    # Extract paths and parameters
+    image_dir = config["image_data"]["image_dir"]
+    labels_csv = config["image_data"]["labels_csv"]
+    model_type = config["image_data"].get("model_type", "DenseNet121")  # Default to CNN_Scratch
+    batch_size = config["image_data"].get("batch_size", 16)
+    learning_rate = config["image_data"].get("learning_rate", 0.001)
+    num_epochs = config["image_data"].get("num_epochs", 100)
+    model_save_path = config["image_data"]["model_save_path"]
+    split_ratio = config["image_data"].get("split_ratio", 0.8)  # Default: 80% train, 20% val
+    augmentation = config["image_data"]["augmentation"]
+
+    # Load dataset
+    full_dataset = ImageDataset(image_dir, labels_csv)
+
+    # Split dataset into train and validation
+    train_size = int(split_ratio * len(full_dataset))
+    val_size = len(full_dataset) - train_size
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+    # Wrap train dataset with augmentations
+    train_dataset.dataset = ImageDataset(image_dir, labels_csv, augment=augmentation)
+
+    # Create DataLoaders
+    full_dataset_loader = DataLoader(full_dataset, batch_size=batch_size, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Choose correct model architecture
+    if model_type == "DenseNet121":
+        print(f"Running image model {model_type}")
+        model = TransferLearningImageClassifier().to(device)
+    else:
+        print(f"Running image model {model_type}")
+        model = CNN_Scratch().to(device)
+
+    # Compute class weights (new code)
+    train_labels_list = [label for _, label in train_dataset]
+    train_labels_array = np.array(train_labels_list)
+    class_weights = compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(train_labels_array),
+        y=train_labels_array
+    )
+    pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    # Training loop
+    for epoch in range(num_epochs):
+        model.train()
+        for images, labels in train_loader:
+            images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = model(images).squeeze()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+        # Evaluate model
+        model.eval()
+        correct = 0
+        total = 0
+        all_labels = []
+        all_probs = []
+
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images).squeeze()
+                probs = torch.sigmoid(outputs)  # Convert logits to probabilities
+                predictions = (probs > 0.5).float()  # Convert probabilities to binary predictions
+
+                correct += (predictions == labels).sum().item()
+                total += labels.size(0)
+
+                # Store probabilities and labels for AUC computation
+                all_probs.extend(probs.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+        # Compute Accuracy
+        accuracy = correct / total
+
+        # Compute AUC Score (Only if both classes exist in validation set)
+        try:
+            auc_score = roc_auc_score(all_labels, all_probs)
+        except ValueError:
+            auc_score = None  # AUC can't be computed if only one class is present
+
+        if config["verbose"] == 1:
+            print(f"Epoch {epoch+1}/{num_epochs}: Validation Accuracy = {accuracy:.4f}")
+            if auc_score is not None:
+                print(f"Epoch {epoch+1}/{num_epochs}: Validation AUC Score = {auc_score:.4f}")
+            else:
+                print(f"Epoch {epoch+1}/{num_epochs}: AUC Score could not be computed (only one class in validation set).")
+
+    # Save the trained model
+    save_model(model, optimizer, model_save_path)
+
+    return model
+
+def train_image_model_loocv(config):
+    """
+    Train an image classification model using Leave-One-Out Cross Validation (LOOCV).
+    
+    For each sample in the dataset, the model is trained on all other samples and evaluated
+    on the held-out sample. Performance metrics are printed for each fold. After LOOCV is completed,
+    the model is retrained on the full dataset and saved to disk.
+
+    Args:
+        config (dict or str): Configuration dictionary or path to a JSON file.
+    """
+
+    # If config is a file path, load it as a dictionary.
+    if isinstance(config, dict):
+        cfg = config
+    else:
+        with open(config, "r") as f:
+            cfg = json.load(f)
+    
+    # Extract parameters and paths
+    image_dir = cfg["image_data"]["image_dir"]
+    labels_csv = cfg["image_data"]["labels_csv"]
+    model_type = cfg["image_data"].get("model_type", "DenseNet121")
+    batch_size = cfg["image_data"].get("batch_size", 16)
+    learning_rate = cfg["image_data"].get("learning_rate", 0.0001)
+    num_epochs = cfg["image_data"].get("num_epochs", 100)
+    augmentation = cfg["image_data"]["augmentation"]
+    model_save_path = cfg["image_data"]["model_save_path"]
+    verbose = cfg.get("verbose", 0)
+    
+    # Load CSV to determine dataset size.
+    labels_df = pd.read_csv(labels_csv)
+    total_samples = len(labels_df)
+    
+    # Create datasets: training with augmentation and validation without.
+    train_dataset_full = ImageDataset(image_dir, labels_csv, augment=augmentation)
+    val_dataset_full = ImageDataset(image_dir, labels_csv, augment=False)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    fold_accuracies = []
+    all_true_labels = []
+    all_pred_probs = []
+    
+    # LOOCV: iterate over each sample as the held-out validation set.
+    for i in range(total_samples):
+        if verbose:
+            print(f"Starting fold {i+1}/{total_samples}")
+        # All indices except the i-th sample for training; the i-th for validation.
+        train_indices = list(range(total_samples))
+        train_indices.remove(i)
+        val_indices = [i]
+        
+        train_subset = Subset(train_dataset_full, train_indices)
+        val_subset = Subset(val_dataset_full, val_indices)
+        
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_subset, batch_size=1, shuffle=False)
+        
+        # Initialize the model for this fold.
+        if model_type == "DenseNet121":
+            model = TransferLearningImageClassifier().to(device)
+        else:
+            model = CNN_Scratch().to(device)
+        
+        # Compute class weights based on training subset.
+        train_labels_list = [label.item() for _, label in train_subset]
+        train_labels_array = np.array(train_labels_list)
+        classes = np.unique(train_labels_array)
+        if len(classes) > 1:
+            class_weights = compute_class_weight(
+                class_weight='balanced',
+                classes=classes,
+                y=train_labels_array
+            )
+            pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+        else:
+            pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+        
+        criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+        
+        # Training loop for the current fold.
+        for epoch in range(num_epochs):
+            model.train()
+            for images, labels in train_loader:
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images).squeeze()
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+        
+        # Evaluate on the held-out sample.
+        model.eval()
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images).squeeze()
+                prob = torch.sigmoid(outputs)
+                prediction = (prob > 0.5).float()
+                correct = (prediction == labels).item()
+                fold_accuracies.append(correct)
+                all_true_labels.append(labels.item())
+                all_pred_probs.append(prob.item())
+                if verbose:
+                    print(f"Fold {i+1}: True Label: {labels.item()}, Predicted Prob: {prob.item()}, Accuracy: {correct}")
+    
+    # Print aggregated LOOCV metrics.
+    avg_accuracy = np.mean(fold_accuracies)
+    try:
+        auc_score = roc_auc_score(all_true_labels, all_pred_probs)
+    except ValueError:
+        auc_score = None
+    print(f"LOOCV Average Accuracy: {avg_accuracy:.4f}")
+    if auc_score is not None:
+        print(f"LOOCV AUC Score: {auc_score:.4f}")
+    else:
+        print("LOOCV AUC Score could not be computed (only one class present across folds).")
+    
+    # --- Retrain Final Model on Full Dataset and Save ---
+    print("Training final model on full dataset...")
+    # Use the training dataset (with augmentation if enabled).
+    full_loader = DataLoader(train_dataset_full, batch_size=batch_size, shuffle=True)
+    
+    if model_type == "DenseNet121":
+        final_model = TransferLearningImageClassifier().to(device)
+    else:
+        final_model = CNN_Scratch().to(device)
+    
+    # Compute class weights for the full dataset.
+    all_labels_list = [label.item() for _, label in train_dataset_full]
+    all_labels_array = np.array(all_labels_list)
+    classes = np.unique(all_labels_array)
+    if len(classes) > 1:
+        class_weights = compute_class_weight(
+            class_weight='balanced',
+            classes=classes,
+            y=all_labels_array
+        )
+        pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+    else:
+        pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+    
+    criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = optim.Adam(final_model.parameters(), lr=learning_rate)
+    
+    for epoch in range(num_epochs):
+        final_model.train()
+        for images, labels in full_loader:
+            images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = final_model(images).squeeze()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+        if verbose:
+            print(f"Final model training - Epoch {epoch+1}/{num_epochs} completed.")
+    
+    # Save the final model.
+    save_model(final_model, optimizer, model_save_path)
+    print("Final model trained on the full dataset has been saved.")
+
+    return final_model
+
