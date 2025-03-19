@@ -59,7 +59,7 @@ class GradCAM:
 
         return heatmap.detach().cpu().squeeze().numpy(), predicted_class
 
-def save_gradcam_output(config, model_2):
+def save_gradcam_output(config, model):
     """Generate and save Grad-CAM heatmaps for the full dataset."""
     # Extract paths and parameters
     image_dir = config["image_data"]["image_dir"]
@@ -110,11 +110,11 @@ def save_gradcam_output(config, model_2):
         # Overlay Grad-CAM heatmap
         plt.imshow(input_image, cmap='gray')  # Original grayscale image
         plt.imshow(heatmap, alpha=0.35, cmap='jet')  # Grad-CAM overlay
-        plt.title(f"{row['image_name'].split('.')[0]} (Predicted: {predicted_class})")
+        plt.title(f"{row['image_name'].split('.')[0]} \n(Predicted: {predicted_class})")
         plt.colorbar()
 
         # Save the image
-        save_path = os.path.join(gradcam_output_save_path, row['image_name'].split(os.path.sep)[0], f"gradcam_{os.path.basename(row['image_name'].split('.')[0])}.png")
+        save_path, _ = os.path.splitext(os.path.join(gradcam_output_save_path, row['image_name']))  # Splits path
         # Create the target directory if it doesn't exist
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path)

@@ -9,8 +9,8 @@ class TransferLearningImageClassifier(nn.Module):
         super(TransferLearningImageClassifier, self).__init__()
         self.model = DenseNet121(spatial_dims=2, in_channels=1, out_channels=num_classes)
         
-        # Modify the pooling layer to ensure fixed feature extraction
-        self.model.features[-1] = nn.AdaptiveAvgPool2d((2, 2))  # Replace last pooling layer
+        # # Modify the pooling layer to ensure fixed feature extraction
+        # self.model.features[-1] = nn.AdaptiveAvgPool2d((2, 2))  # Replace last pooling layer
 
     def forward(self, x):
         return self.model(x)

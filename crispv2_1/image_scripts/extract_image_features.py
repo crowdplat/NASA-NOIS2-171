@@ -11,9 +11,10 @@ from scipy.ndimage import center_of_mass
 from scipy.stats import moment, kurtosis, skew
 from image_scripts.image_classifier import CNN_Scratch, TransferLearningImageClassifier
 from image_scripts.gradcam import GradCAM
+from image_scripts.visualize_gradcam_features import Visualize_GradCAM_Features
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass
-from skimage.measure import find_contours
+
 
 def load_image(image_path):
         """Loads an image from file (.png, .jpg) or `.npy` array (NumPy)."""
@@ -31,8 +32,8 @@ def compute_radial_features(heatmap, bin_width=5):
     Compute radial features for a heatmap by grouping pixel distances into bins.
     
     Parameters:
-      heatmap (np.array): 2D array (grayscale) representing the Grad-CAM heatmap.
-      bin_width (int): Width of each radial bin in pixels.
+        heatmap (np.array): 2D array (grayscale) representing the Grad-CAM heatmap.
+        bin_width (int): Width of each radial bin in pixels.
     
     Returns:
       radial_features (list): List of mean activation values for each radial bin.
@@ -59,39 +60,12 @@ def compute_radial_features(heatmap, bin_width=5):
     
     return radial_features
 
-def visualize_clusters_on_heatmap(image_path, input_image, heatmap, threshold=None):
-    """
-    Visualize clusters on the Grad-CAM heatmap by drawing contours around regions 
-    where the heatmap value exceeds a threshold.
-    
-    Parameters:
-      heatmap (np.array): 2D Grad-CAM heatmap (normalized to 0-255 or similar scale).
-      threshold (float): Threshold value to define clusters. If None, uses (mean + std).
-    """
-    # If no threshold provided, compute default threshold as mean + std
-    if threshold is None:
-        threshold = np.mean(heatmap) + np.std(heatmap)
-    
-    # Create binary map: pixels above threshold are active
-    binary_map = (heatmap > threshold).astype(np.uint8)
-    
-    # Find contours in the binary map at the 0.5 level
-    contours = find_contours(binary_map, level=0.5)
-    
-    # Plot the heatmap and overlay the contours
-    plt.figure(figsize=(8, 8))
-    plt.imshow(input_image, cmap='gray')
-    plt.imshow(heatmap, cmap='jet', alpha=0.35)
-    for contour in contours:
-        # contour coordinates: (row, col)
-        plt.plot(contour[:, 1], contour[:, 0], linewidth=2, color='white')
-    plt.title(f"Cluster Contours\n{image_path.split('.')[0]}")
-    plt.axis('off')
-    plt.show()
-
-
-def extract_gradcam_features(model, image_path, target_layer, visualize=False):
+def extract_gradcam_features(config, model, image_path, target_layer, visualize=False):
     """ Generate Grad-CAM heatmap and extract structured numerical features. """
+
+    show_clusters = config["image_data"]["gradcam_features_explainer"].get("show_clusters", False)
+    show_com = config["image_data"]["gradcam_features_explainer"].get("show_com", False)
+    gradcam_features_explainer_save_path = config["image_data"]["gradcam_features_explainer"].get("save_path", "gradcam_features_explainer")
 
     # Load and preprocess image
     input_image = load_image(image_path)  # Load correctly based on file type
@@ -118,34 +92,11 @@ def extract_gradcam_features(model, image_path, target_layer, visualize=False):
     max_activation = np.max(heatmap)
     spread_variance = np.var(heatmap)
 
-
-
     # Compute Center of Mass
     com_y, com_x = center_of_mass(heatmap)  # Returns (y, x) coordinates
     height, width = heatmap.shape
     com_x_norm = com_x / width  # Normalized x coordinate
     com_y_norm = com_y / height  # Normalized y coordinate
-
-    # Visualize the Center of Mass on the Grad-CAM heatmap
-    # Convert the original image to a displayable format
-    if visualize:
-        original_image_display = np.array(input_image)  # Convert PIL Image to NumPy array
-        print("original_image_display", original_image_display.max(), original_image_display.min())
-        plt.subplot(1, 2, 1)
-        plt.imshow(input_image, cmap='gray')
-        plt.title(f"{image_path.split('.')[0]}")
-        plt.axis('off')
-
-        # Plot the Grad-CAM heatmap with Center of Mass
-        plt.subplot(1, 2, 2)
-        plt.imshow(input_image, cmap='gray')  # Original grayscale image
-        plt.imshow(heatmap, cmap='jet', alpha=0.35)  # Heatmap overlay
-        plt.scatter(com_x, com_y, color='red', marker='x', s=50, label='Center of Mass')  # Plot CoM
-        # plt.title("Grad-CAM Heatmap with Center of Mass")
-        plt.legend()
-        plt.axis('off')
-
-        plt.show()
 
     # # Compute radial distribution features
     # center = np.array(heatmap.shape) // 2
@@ -169,10 +120,16 @@ def extract_gradcam_features(model, image_path, target_layer, visualize=False):
     avg_cluster_size = np.mean([prop.area for prop in cluster_props]) if cluster_props else 0
     # Normalize avg_cluster_size
     heatmap_size = heatmap.shape[0] * heatmap.shape[1]
-    avg_cluster_size_normalized = avg_cluster_size / heatmap_size
+    # avg_cluster_size_normalized = avg_cluster_size / heatmap_size
 
-    if(visualize):
-        visualize_clusters_on_heatmap(image_path, input_image, heatmap)
+    if(show_clusters or show_com):
+        feature_visualizer = Visualize_GradCAM_Features(image_path, input_image, heatmap, gradcam_features_explainer_save_path)
+        if(show_clusters):
+            print("Saving Clusters on gradcam visualizations . . .")
+            feature_visualizer.visualize_clusters_on_heatmap(binary_map)
+        if(show_com):
+            print("Saving Center of Mass pixels on gradcam visualizations . . .")
+            feature_visualizer.visualize_com_on_heatmap(com_x, com_y)
 
     # Compute spatial connectivity of clusters
     cluster_connectivity = np.sum(binary_map * np.roll(binary_map, 1, axis=0) * np.roll(binary_map, 1, axis=1))
@@ -192,7 +149,7 @@ def extract_gradcam_features(model, image_path, target_layer, visualize=False):
     features = [
         mean_activation, max_activation, spread_variance,
         contrast, homogeneity, energy, correlation,
-        num_activation_clusters, avg_cluster_size, avg_cluster_size_normalized, cluster_connectivity, cluster_connectivity_normalized, com_x_norm, com_y_norm, normalized_moment_skewness, normalized_moment_kurtosis
+        num_activation_clusters, avg_cluster_size, cluster_connectivity, cluster_connectivity_normalized, com_x, com_y, normalized_moment_skewness, normalized_moment_kurtosis
     ] + radial_features
 
     return features, radial_features
@@ -231,7 +188,7 @@ def extract_image_features(config, model):
 
         if os.path.exists(img_path):
             # Extract Grad-CAM Features
-            gradcam_features, radial_features = extract_gradcam_features(model, img_path, target_layer, visualize=False)
+            gradcam_features, radial_features = extract_gradcam_features(config, model, img_path, target_layer, visualize=False)
 
             # Store Features
             gradcam_feature_list.append([sample, img_filename, label, env_split] + gradcam_features)
@@ -242,7 +199,7 @@ def extract_image_features(config, model):
     feature_names = [
         "mean_activation", "max_activation", "spread_variance",
         "contrast", "homogeneity", "energy", "correlation",
-        "num_activation_clusters", "avg_cluster_size", "avg_cluster_size_normalized", "cluster_connectivity", "cluster_connectivity_normalized", 
+        "num_activation_clusters", "avg_cluster_size", "cluster_connectivity", "cluster_connectivity_normalized", 
         "center_of_mass_x", "center_of_mass_y", 
         "normalized_moment_skewness", "normalized_moment_kurtosis"
     ]
