@@ -15,12 +15,8 @@ Image pre-process configuration JSON would require few parameters\
 ### Configuration File
 The configuration file controls the behavior of the pipelines. Key new sections added for the image model include:\
 
-Image Data:
-
-    `image_dir`: Path to the image directory.
-
-    `labels_csv`: Path to the image labels CSV file.
-
-    `model_type`: Type of model to train (CNN_Scratch or DenseNet121).
-
-    `gradcam_features_explainer`: Controls visualization of clusters and center of mass.
+**Image Data:** \
+`image_dir`: Path to the image directory.\
+`labels_csv`: Path to the image labels CSV file.\
+`model_type`: Type of model to train (CNN_Scratch or DenseNet121).\
+`gradcam_features_explainer`: Controls visualization of clusters and center of mass.\
