@@ -12,8 +12,8 @@ from image_scripts.gradcam import save_gradcam_output
 
 
 def run(config):
-
-    if(config["experiment_type"]=='image_only' or config["experiment_type"]=='multimodal'):
+    experiment_type = config.get("experiment_type", "tabular_only")  # Default to CNN_Scratch
+    if(experiment_type=='image_only' or experiment_type=='multimodal'):
         # Train the image model first
         image_model_training_type = config["image_data"]["image_model_training_type"]
         if(image_model_training_type=='train_test_split'):
@@ -32,7 +32,7 @@ def run(config):
         # Extract Image Model features
         extract_image_features(config, model)
 
-        if(config["experiment_type"]=='multimodal'):
+        if(experiment_type=='multimodal'):
             # Merge Extracted image features and tabular data
             save_merged_features(config)
 
