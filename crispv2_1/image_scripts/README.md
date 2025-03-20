@@ -21,4 +21,5 @@ The configuration file controls the behavior of the pipelines. Key new sections 
 `image_dir`: Path to the image directory.\
 `labels_csv`: Path to the image labels CSV file.\
 `model_type`: Type of model to train (CNN_Scratch or DenseNet121).\
+`image_model_training_type`: Type of training/validation (values can be set to `train_test_split` for typical train test with a specified `split_raio`. Another option is `full_loocv` for LOOCV validation based training on full data. Both approaches will save the trained model for later useage such as gradcam features extractions.\
 `gradcam_features_explainer`: Controls visualization of clusters and center of mass.\
