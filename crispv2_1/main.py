@@ -12,7 +12,7 @@ from image_scripts.gradcam import save_gradcam_output
 
 
 def run(config):
-    experiment_type = config.get("experiment_type", "tabular_only")  # Default to CNN_Scratch
+    experiment_type = config.get("experiment_type", "tabular_only")  # Default to tabular_only
     if(experiment_type=='image_only' or experiment_type=='multimodal'):
         # Train the image model first
         image_model_training_type = config["image_data"]["image_model_training_type"]
