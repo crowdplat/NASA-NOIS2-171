@@ -9,6 +9,8 @@ Image pre-process configuration JSON would require few parameters\
 `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use\
 `environments`: Name of the Environment split variable
 
+The preprocessing script will also save a CSV (e.g., labels.csv) file listing all the original/transformed filenames and environment numbers.
+
 ## 2. Train CRISP ensemble of models\
 `python main.py --experiment_config experiment_configs/config.json`
 
