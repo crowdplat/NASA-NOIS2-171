@@ -56,7 +56,7 @@ def save_merged_features(config):
 
     mered_dataset_save_path = config["data_options"]["dataset_fp"]
     # print("Merging image and tabular data features . . .")
-    merged_features_df = pd.merge(gradcam_features_df, tabular_data_df, on="sample", how="inner")
+    merged_features_df = pd.merge(gradcam_features_df, tabular_data_df, on=subject_key, how="inner")
     # merged_features_df = gradcam_features_df.copy()
 
     exclude_vars = list(set(exclude+list(target_var)+list(environments)+list(['num_activation_clusters'])))
