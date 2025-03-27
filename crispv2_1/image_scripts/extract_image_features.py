@@ -158,10 +158,14 @@ def extract_image_features(config, model):
     """ Extract CNN feature embeddings and Grad-CAM features from images """
     
     # Extract paths and parameters from config
+    subject_key = config["data_options"]["subject_keys"]
+    target_var = config["data_options"]["targets"][0]
+    environments = config["data_options"]["environments"][0]
+
     model_save_path = config["image_data"]["model_save_path"]
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
-    gradcam_features_save_path = config["image_data"]["gradcam_features_save_path"]
+    gradcam_features_save_path = config["image_data"].get("gradcam_features_save_path", os.path.dirname(image_dir))
     model_type = config["image_data"].get("model_type", "CNN_Scratch")
 
     # Load trained model
@@ -180,10 +184,10 @@ def extract_image_features(config, model):
     gradcam_feature_list = []
 
     for _, row in df.iterrows():
-        sample = row['sample']
+        sample = row[subject_key]
         img_filename = row['image_name']
-        label = row['label']
-        env_split = row['env_split']
+        label = row[target_var]
+        env_split = row[environments]
         img_path = os.path.join(image_dir, img_filename)
 
         if os.path.exists(img_path):

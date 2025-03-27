@@ -33,36 +33,82 @@ def normalize_except_exclude(tabular_data_df, exclude_vars):
 
     return result_df
 
+def merge_environments(gradcam_features_df, tabular_data_df, subject_key, env_column, merge_config):
+    """
+    Merge image and tabular data based on environment mappings defined in merge_config.
+    
+    Parameters:
+    - gradcam_features_df: DataFrame containing GradCAM features.
+    - tabular_data_df: DataFrame containing tabular features.
+    - subject_key: Column name used to merge (e.g., 'sample').
+    - env_column: Column name for environment labels (e.g., 'env_split').
+    - merge_config: Dictionary defining environment mappings (from config JSON).
+    
+    Returns:
+    - Merged DataFrame with unified environments.
+    """
+    merged_dfs = []
+    
+    for unified_env, env_mapping in merge_config.items():
+        # Filter image data
+        img_envs = env_mapping["img_env"]
+        img_filtered = gradcam_features_df[gradcam_features_df[env_column].isin(img_envs)].copy()
+        
+        # Filter tabular data
+        tabular_envs = env_mapping["tabular_env"]
+        tabular_filtered = tabular_data_df[tabular_data_df[env_column].isin(tabular_envs)].copy()
+        
+        # Merge on subject_key
+        merged = pd.merge(img_filtered, tabular_filtered, on=subject_key, how="inner", suffixes=('_img', '_tabular'))
+        
+        # Assign unified environment label
+        merged[env_column] = unified_env
+        
+        merged_dfs.append(merged)
+    
+    # Combine all merged DataFrames
+    final_merged = pd.concat(merged_dfs, ignore_index=True)
+    return final_merged
+
 def save_merged_features(config):
     tabular_data_df = pd.read_pickle(config["image_data"]["tabular_features_path"])
     gradcam_features_df = pd.read_pickle(config["image_data"]["gradcam_features_save_path"])
     
     subject_key = config["data_options"]["subject_keys"]
     target_var = config["data_options"]["targets"]
-    environments = config["data_options"]["environments"]
+    environments = config["data_options"]["environments"][0]  # Assuming single environment column
     exclude = config["data_options"]["exclude"]
     
     print("Tabular", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
+    
     # Find overlapping columns
     overlap_columns = tabular_data_df.columns.intersection(gradcam_features_df.columns).tolist()
-    if(subject_key in overlap_columns):
+    if (subject_key in overlap_columns) or (environments in overlap_columns):
         overlap_columns.remove(subject_key)
+        overlap_columns.remove(environments)
     print("overlap_columns", overlap_columns)
     
-    # Removing the columns
+    # Remove overlapping columns from tabular data
     tabular_data_df = tabular_data_df.drop(columns=overlap_columns)
 
     print("Tabular", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
 
-    mered_dataset_save_path = config["data_options"]["dataset_fp"]
-    # print("Merging image and tabular data features . . .")
-    merged_features_df = pd.merge(gradcam_features_df, tabular_data_df, on=subject_key, how="inner")
-    # merged_features_df = gradcam_features_df.copy()
+    # Merge data based on environment mappings if specified
+    if "multimodal_merge_options" in config:
+        merge_config = config["multimodal_merge_options"]["environment_split_unified"]
+        merged_features_df = merge_environments(
+            gradcam_features_df, tabular_data_df, subject_key, environments, merge_config
+        )
+    else:
+        # Default merge (no environment mapping)
+        merged_features_df = pd.merge(gradcam_features_df, tabular_data_df, on=subject_key, how="inner")
 
-    exclude_vars = list(set(exclude+list(target_var)+list(environments)+list(['num_activation_clusters'])))
+    # Normalize features (excluding specified columns)
+    exclude_vars = list(set(exclude + target_var + [environments, environments+'_img', environments+'_tabular'] + ['num_activation_clusters']))
     merged_features_df = normalize_except_exclude(merged_features_df, exclude_vars)
     
     print("Merged data", merged_features_df.shape)
-    print('Saving', mered_dataset_save_path.split('.')[0]+'.csv')
-    merged_features_df.to_csv(mered_dataset_save_path.split('.')[0]+'.csv', index=False)
-    merged_features_df.reset_index(drop=True).to_pickle(mered_dataset_save_path)
+    save_path = config["data_options"]["dataset_fp"]
+    print('Saving', save_path.split('.')[0] + '.csv')
+    merged_features_df.to_csv(save_path.split('.')[0] + '.csv', index=False)
+    merged_features_df.reset_index(drop=True).to_pickle(save_path)
