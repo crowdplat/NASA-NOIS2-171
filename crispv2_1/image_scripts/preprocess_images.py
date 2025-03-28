@@ -73,14 +73,13 @@ class Transformations:
                         print('Saving', output_image_path)
                         np.save(output_image_path, img_array)
                         saved_image_names.append(os.path.join("original_resized", f"{os.path.splitext(filename)[0]}.npy"))
-                        saved_env_split.append(0)
+                        saved_env_split.append("original_resized")
 
                         # plt.imshow(img_array)
                         # plt.title(f"{os.path.splitext(filename)[0]}.npy")
                         # plt.show()
                         
                         # Apply additional transformations on original pre-processed images
-                        env_split_count=1
                         for transform_name in self.transforms.keys():
                             transformed_img = self.apply_transform(np.array(img_resized), transform_name)
                             transformed_img_resized = cv2.resize(transformed_img, self.image_size)
@@ -94,8 +93,7 @@ class Transformations:
                             print(f"Saved: {output_image_path}")
 
                             saved_image_names.append(os.path.join(transform_name, f"{os.path.splitext(filename)[0]}.npy"))
-                            saved_env_split.append(env_split_count)
-                            env_split_count+=1
+                            saved_env_split.append(transform_name)
 
                             # plt.imshow(transformed_img_array)
                             # plt.title(f"{os.path.splitext(filename)[0]}.npy")
