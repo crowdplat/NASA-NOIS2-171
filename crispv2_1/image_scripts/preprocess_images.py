@@ -10,6 +10,7 @@ import pandas as pd
 
 Image.MAX_IMAGE_PIXELS = None
 
+### Sample Command to pre-process image dataset ###
 # python image_scripts/preprocess_images.py --image_preprocess_config experiment_configs/image_preprocess.json
 
 class Transformations:
@@ -121,7 +122,5 @@ if __name__ == '__main__':
         preprocess_config = json.load(json_file)
 
     transformations = Transformations(preprocess_config)
-    # print("Applying Pre-processing to original images . . .")
-    # transformations.preprocess_images()
     print("Applying Transformations to images . . .")
     transformations.transform_images()
