@@ -44,3 +44,7 @@ The `experiment_type` parameter is added to distinguish between type of run. It 
     - `save_path`: Folder path for saving Grad-CAM visualizations.
     - `show_clusters`: Boolean flag to visualize cluster contours on the heatmap.
     - `show_com`: Boolean flag to visualize the center of mass on the heatmap.
+ 
+**Image and Tabular Data Merge**
+- `multimodal_merge_options`:
+  `environment_split_unified`:
