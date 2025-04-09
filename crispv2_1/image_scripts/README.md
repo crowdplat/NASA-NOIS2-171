@@ -37,7 +37,7 @@ The `experiment_type` parameter is added to distinguish between type of run. It 
   - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images.
   - `tabular_features_path`: Path for the prepraed tabular dataset (e.g., Gene expression data)
 
-**Grad-CAM & Feature Visualization**
+***Grad-CAM & Feature Visualization***
 - `image_model_gradcam`:
     `apply_gradcam`: Boolean flag to save Grad-CAM heatmaps for all images (the save location is specified via `gradcam_output_save_path`).
 - `gradcam_features_explainer`:
