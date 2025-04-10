@@ -48,10 +48,11 @@ The `experiment_type` parameter is added to distinguish between type of run. It 
 **Image and Tabular Data Merge**
 - `multimodal_merge_options`:
   - `environment_split_unified`:
-    {
+    `{
     "env1": {"img_env": [0, 2], "tabular_env": [0]},
     "env2": {"img_env": [1, 3], "tabular_env": [1]}
-    }
+    }`
+    
     This maps:
     Image environments 0, 2 + tabular environment 0 → Unified environment  env1.
     Image environments 1, 3 + tabular environment 1 → Unified environment  env2.
