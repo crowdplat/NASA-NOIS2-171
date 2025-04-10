@@ -46,13 +46,13 @@ The `experiment_type` parameter is added to distinguish between type of run. It 
     - `show_com`: Boolean flag to visualize the center of mass on the heatmap.
  
 **Image and Tabular Data Merge**
-- `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an example if we have 6 environments for image and 2 envs for tabular. User can modify this:
+- `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an * example * if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed:
   - `environment_split_unified`:
     `{
             "env1": {"img_env": ["rotate_90_transform", "gaussian_blur_transform", "brightness_contrast_transform"], "tabular_env": [0]},
             "env2": {"img_env": ["horizontal_flip_transform", "original_resized", "vertical_flip_transform"], "tabular_env": [1]}
         }`
     
-    This maps:
+    The above example maps as follows:
     Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
     Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
