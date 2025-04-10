@@ -12,7 +12,7 @@ Image pre-process configuration JSON would require few parameters
   - `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use
   - `environments`: Name of the Environment split variable
 
-The script will save a CSV file (e.g., labels.csv) listing the original and transformed filenames along with their corresponding environment numbers.
+The script will save a CSV file (e.g., labels.csv) inside the output folder, listing the original and transformed image filenames along with their corresponding environment names (e.g., `iamge_name`, `env_split`) . User can add the image labels and sample/subject keys in this CSV file for running through the the next steps. 
 
 ## 2. Train CRISP ensemble of models
 Once the images are preprocessed, you can train the CRISP ensemble. The training pipeline now supports both image-only runs and multimodal runs (image + tabular data).
