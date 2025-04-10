@@ -1,6 +1,6 @@
 # Steps for running CRISP with image modules
 
-First need to install all required packages. Use the followiwng command to install packages:
+Ensure you have a working version of Python 3.7 and then need to install all required packages. Use the followiwng command to install packages from the virtual environment:
 `pip install -r requirements_new.txt`
 
 ## 1. Image Preprocess
