@@ -1,7 +1,11 @@
 # Steps for running CRISP with image modules
 
+## Package Installation
 Ensure you have a working version of Python 3.7 and then need to install all required packages. Use the followiwng command to install packages from the virtual environment:
 `pip install -r requirements_new.txt`
+
+## Notes
+Currently, the image analysis module of CRISP only supports binary classification (two classes, 0 or 1). To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label.
 
 ## 1. Image Preprocess
 Run the image preprocessing script to resize, normalize, and augment the images:\
