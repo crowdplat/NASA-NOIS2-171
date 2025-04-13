@@ -1,11 +1,18 @@
 # Steps for running CRISP with image modules
 
 ## Package Installation
-Ensure you have a working version of Python 3.7 and then need to install all required packages. Use the followiwng command to install packages from the virtual environment:
+Ensure you have a working version of **Python 3.7** and then need to install all required packages. 
+
+Conda users, can use the following commands:
+
+`conda create --name crisp2_1 python=3.7`
+`conda activate crisp2_1`
+
+Then, use the followiwng command to install packages from the virtual environment:
 `pip install -r requirements_new.txt`
 
 ## Notes
-Currently, the image analysis module of CRISP only supports binary classification (two classes, 0 or 1). To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label.
+  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label.
 
 ## 1. Image Preprocess
 Run the image preprocessing script to resize, normalize, and augment the images:\
@@ -25,9 +32,69 @@ Once the images are preprocessed, you can train the CRISP ensemble. The training
 `python main.py --experiment_config experiment_configs/config.json`
 
 ### Configuration File Overview
-The configuration file controls the behavior of the pipelines. Key new sections added for the image model include:
+The configuration file controls the behavior of the pipelines. Following is a sample config JSON to demonstrate the key new sections added for the image model include:
 
-The `experiment_type` parameter is added to distinguish between type of run. It can have value such as `multimodal` for both image and tabular data mix training. For CRISP to use only image data, it can have value `image_only`. For any other value such as `tabular`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+```json
+{
+    "name": "Example synthetic",
+    "short_name": "example",
+    "experiment_type": "multimodal", 
+    "verbose": 1,
+    "test_val_split": [0.1, 0.1],
+    "data_options": {
+        "dataset_fp": "data/merged_db.pickle",
+        "subject_keys": "Subj_ID",
+        "targets": ["label"],
+        "predictors": "All",
+        "environments": ["env_split"],
+        "exclude": ["sample", "image_name", "label", "env_split"],
+	"output_data_regime": "binary"
+    },
+    "feature_selection_options": {
+        "max_features": 20,
+        "verbose": 0,
+        "seed": 12
+    },
+    "ensemble_options": {
+        "models": ["RF", "ICP", "NLICP", "IRM", "LIRM"]
+    },
+    
+    "image_data": {
+        "image_dir": "data/preprocessed_images/",
+        "labels_csv": "data/csvs/rr3_image_dataset_labels.csv",
+        "model_type": "DenseNet121",
+        "image_model_training_type": "train_test_split", 
+        "split_ratio": 0.85,
+        "augmentation": true, 
+        "batch_size": 64,
+        "learning_rate": 0.0001,
+        "num_epochs": 100,
+        "model_save_path": "image_model_saved/image_model.pth",
+        "gradcam_features_save_path": "data/gradcam_features.pkl",
+        "tabular_features_path": "data/tabular_db.pickle",
+
+        "image_model_gradcam": {
+            "apply_gradcam": true,
+            "gradcam_output_save_path": "data/gradcam_outputs"
+        },
+
+        "gradcam_features_explainer":{
+            "save_path": "data/gradcam_features_explainer",
+            "show_clusters": false,
+            "show_com": false
+        }
+    },
+    
+    "multimodal_merge_options":{
+        "environment_split_unified": {
+            "env1": {"img_env": ["rotate_90_transform", "gaussian_blur_transform", "brightness_contrast_transform"], "tabular_env": [0]},
+            "env2": {"img_env": ["horizontal_flip_transform", "original_resized", "vertical_flip_transform"], "tabular_env": [1]}
+        }
+    }
+}
+```
+
+The `experiment_type` parameter is added to distinguish between type of experiment run. It can have value such as `multimodal` for both image and tabular data mix training. For CRISP to use only image data, it can have value `image_only`. For any other value such as `tabular`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
 
 **Image Data:** 
   - `image_dir`: Path to the image directory.
@@ -41,7 +108,7 @@ The `experiment_type` parameter is added to distinguish between type of run. It 
   - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images.
   - `tabular_features_path`: Path for the prepraed tabular dataset (e.g., Gene expression data)
 
-***Grad-CAM & Feature Visualization***
+**Grad-CAM & Feature Visualization**
 - `image_model_gradcam`:
     `apply_gradcam`: Boolean flag to save Grad-CAM heatmaps for all images (the save location is specified via `gradcam_output_save_path`).
 - `gradcam_features_explainer`:
