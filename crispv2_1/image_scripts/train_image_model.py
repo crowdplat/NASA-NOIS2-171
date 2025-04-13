@@ -106,13 +106,13 @@ def train_image_model(config):
     # Extract paths and parameters
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
-    model_type = config["image_data"].get("model_type", "DenseNet121")  # Default to CNN_Scratch
+    model_type = config["image_data"].get("model_type", "DenseNet121")
     batch_size = config["image_data"].get("batch_size", 16)
-    learning_rate = config["image_data"].get("learning_rate", 0.001)
+    learning_rate = config["image_data"].get("learning_rate", 0.0001)
     num_epochs = config["image_data"].get("num_epochs", 100)
-    model_save_path = config["image_data"]["model_save_path"]
+    model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     split_ratio = config["image_data"].get("split_ratio", 0.8)  # Default: 80% train, 20% val
-    augmentation = config["image_data"]["augmentation"]
+    augmentation = config["image_data"].get("augmentation", False)
 
     # Load dataset
     full_dataset = ImageDataset(image_dir, labels_csv)
@@ -234,8 +234,8 @@ def train_image_model_loocv(config):
     batch_size = cfg["image_data"].get("batch_size", 16)
     learning_rate = cfg["image_data"].get("learning_rate", 0.0001)
     num_epochs = cfg["image_data"].get("num_epochs", 100)
-    augmentation = cfg["image_data"]["augmentation"]
-    model_save_path = cfg["image_data"]["model_save_path"]
+    augmentation = cfg["image_data"]["augmentation"].get("augmentation", False)
+    model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     verbose = cfg.get("verbose", 0)
     
     # Load CSV to determine dataset size.
