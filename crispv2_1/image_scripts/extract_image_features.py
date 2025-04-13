@@ -14,7 +14,7 @@ from image_scripts.gradcam import GradCAM
 from image_scripts.visualize_gradcam_features import Visualize_GradCAM_Features
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass
-
+from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
 def load_image(image_path):
         """Loads an image from file (.png, .jpg) or `.npy` array (NumPy)."""
@@ -95,13 +95,6 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
     # Compute Center of Mass
     com_y, com_x = center_of_mass(heatmap)  # Returns (y, x) coordinates
     height, width = heatmap.shape
-    com_x_norm = com_x / width  # Normalized x coordinate
-    com_y_norm = com_y / height  # Normalized y coordinate
-
-    # # Compute radial distribution features
-    # center = np.array(heatmap.shape) // 2
-    # distances = np.linalg.norm(np.indices(heatmap.shape).T - center, axis=-1)
-    # radial_features = [np.nan_to_num(np.mean(heatmap[distances == r]), nan=0.0) for r in range(1, int(np.max(distances)))]
 
     radial_features = compute_radial_features(heatmap)
 
@@ -120,7 +113,6 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
     avg_cluster_size = np.mean([prop.area for prop in cluster_props]) if cluster_props else 0
     # Normalize avg_cluster_size
     heatmap_size = heatmap.shape[0] * heatmap.shape[1]
-    # avg_cluster_size_normalized = avg_cluster_size / heatmap_size
 
     if(show_clusters or show_com):
         feature_visualizer = Visualize_GradCAM_Features(image_path, input_image, heatmap, gradcam_features_explainer_save_path)
@@ -162,7 +154,8 @@ def extract_image_features(config, model):
     target_var = config["data_options"]["targets"][0]
     environments = config["data_options"]["environments"][0]
 
-    model_save_path = config["image_data"]["model_save_path"]
+    # model_save_path = config["image_data"]["model_save_path"]
+    model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
     gradcam_features_save_path = config["image_data"].get("gradcam_features_save_path", os.path.dirname(image_dir))
@@ -180,7 +173,6 @@ def extract_image_features(config, model):
 
     # Read dataset CSV
     df = pd.read_csv(labels_csv)
-    image_feature_list = []
     gradcam_feature_list = []
 
     for _, row in df.iterrows():
@@ -208,9 +200,6 @@ def extract_image_features(config, model):
         "normalized_moment_skewness", "normalized_moment_kurtosis"
     ]
 
-    # # Add radial distance features
-    # radial_feature_names = [f"radial_feature_{i}" for i in range(len(radial_features))]
-
     # Example: Bin width = 5
     bin_width = 5
     radial_feature_names = [
@@ -218,10 +207,8 @@ def extract_image_features(config, model):
         for i in range(len(radial_features))
     ]
 
-    print("radial_feature_names", len(radial_feature_names))
-
     # Combine all feature names
-    gradcam_column_names = ["sample", "image_name", "label", "env_split"] + feature_names + radial_feature_names
+    gradcam_column_names = [subject_key, "image_name", target_var, environments] + feature_names + radial_feature_names
 
     # Verify feature lengths match
     for row in gradcam_feature_list:
@@ -229,8 +216,15 @@ def extract_image_features(config, model):
 
     # Save Grad-CAM features
     gradcam_features_df = pd.DataFrame(gradcam_feature_list, columns=gradcam_column_names)
-    gradcam_features_df[gradcam_column_names] = gradcam_features_df[gradcam_column_names].fillna(0)
+    gradcam_features_df[feature_names + radial_feature_names] = gradcam_features_df[feature_names + radial_feature_names].fillna(0)
+
+    # Normalize the remaining columns using MinMaxScaler
+    print('Normalizing image-gradcam features . . .')
+    scaler = MinMaxScaler()  # Use StandardScaler() for standardization instead
+    features_to_normalize=feature_names + radial_feature_names
+    features_to_normalize.remove('num_activation_clusters')
+    gradcam_features_df[features_to_normalize] = scaler.fit_transform(gradcam_features_df[features_to_normalize])
+
     gradcam_features_df.to_csv(gradcam_features_save_path.split('.')[0]+'.csv', index=False)
     gradcam_features_df.reset_index(drop=True).to_pickle(gradcam_features_save_path)
-
     print(f"Extracted Grad-CAM features saved to {gradcam_features_save_path}")
