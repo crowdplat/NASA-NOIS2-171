@@ -13,7 +13,6 @@ def normalize_except_exclude(tabular_data_df, exclude_vars):
     Returns:
     - A pandas DataFrame with normalized data except for the excluded columns
     """
-    print("exclude_vars", exclude_vars)
     # Separate the columns to exclude from the rest
     columns_to_exclude = tabular_data_df[exclude_vars]
     columns_to_normalize = tabular_data_df.drop(columns=exclude_vars)
@@ -71,6 +70,9 @@ def merge_environments(gradcam_features_df, tabular_data_df, subject_key, env_co
     return final_merged
 
 def save_merged_features(config):
+    """
+    Combine tabular and image(gradcam) features based on subject key/sample
+    """
     tabular_data_df = pd.read_pickle(config["image_data"]["tabular_features_path"])
     gradcam_features_df = pd.read_pickle(config["image_data"]["gradcam_features_save_path"])
     
