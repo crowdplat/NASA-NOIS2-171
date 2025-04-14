@@ -24,7 +24,7 @@ pip install -r requirements_new.txt
   - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
 
 ## 1. Image Preprocess
-Run the image preprocessing script to resize, normalize, and augment the images:
+Run the image preprocessing script to resize and augment the images:
 
 ```sh
 python image_scripts/preprocess_images.py --image_preprocess_config image_preprocess_config_file_name.json
@@ -37,7 +37,7 @@ Image pre-process configuration JSON would require few fields such as:
 
 For the user's convenient, the image pre-processing script will also save a CSV file (e.g., named `labels.csv`) inside the output folder, listing the original and transformed image filenames along with their corresponding environment names (e.g., `image_name`, `env_split`) . User need to then modify this file by adding the image class labels and sample/subject keys (if any) to this CSV file for running through the the next steps during model training. 
 
-The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. 
+The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. Along with the original resized images there will 5 more environments created by the image pre-processing script namely `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
 
 ## 2. Train CRISP ensemble of models
 Once the images are preprocessed, the user can train the CRISP ensemble. The training pipeline now supports both image-only experiment and multimodal experiment (image + tabular data).
@@ -116,19 +116,21 @@ The **`experiment_type`** parameter is added to distinguish between type of expe
 `multimodal`: for both image and tabular data mix
 `image_only`: if the user wants to run on image dataset only
 
-For any other value such as `tabular_only`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+For any other value such as `tabular_only` (default value), it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+
+Following are the other newly added fields related to image modules. The required fields are indicated by `*` at the end of each field description. 
 
 **Image Data:** 
   - `image_dir`: Path to the image directory. *
   - `labels_csv`: Path to the image labels CSV file. *
   - `model_type`: Type of model to train (CNN_Scratch or DenseNet121). Default value `DenseNet121`
-  - `image_model_training_type`: Type of training/validation (values can be set to `train_test_split` for typical train test with a specified `split_raio`. Another option is `full_loocv` for LOOCV validation based training on full data. Both approaches will save the trained model for later useage such as gradcam features extractions.
+  - `image_model_training_type`: Type of training/validation (values can be set to `train_test_split` for typical train test with a specified `split_raio`. Another option is `full_loocv` for LOOCV validation based training on full data. Both approaches will save the trained model for later useage such as gradcam features extractions. The `full_loocv` would be more suitable for smaller image dataset, for usual medium/big sized dataset, `train_test_split` should be fine. 
   - `split_ratio`: The training data ratio to train the image model. Default `0.8`
-  - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`.
-  - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file.
-  - `model_save_path`: Path to save the trained model file.
+  - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`. Default `false`
+  - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `32`, `0.0001`, and `100`, respectively.
+  - `model_save_path`: Path to save the trained model file. Default value `image_model_saved/image_model.pth`
   - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images.
-  - `tabular_features_path`: Path for the prepraed tabular dataset (e.g., Gene expression data)
+  - `tabular_features_path`: Path for the prepraed tabular dataset (e.g., Gene expression data) *
 
 **Grad-CAM & Feature Visualization**
 - `image_model_gradcam`:
