@@ -155,3 +155,11 @@ The following fields are only
     The above example maps the image and tabular environments as follows:
     Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
     Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
+
+## 2. Visualise results using streamlit frontend
+
+Run streamlit by running the streamlit_main.py by the following command
+
+```sh
+streamlit run streamlit_main.py
+```
