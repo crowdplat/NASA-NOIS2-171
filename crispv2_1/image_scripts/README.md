@@ -18,7 +18,7 @@ Then, use the following command to install packages from the virtual environment
 pip install -r requirements_new.txt
 ```
 
-## Notes
+## Additional Notes
   - CRISP now supports tabular only data (same as previous version), image only, and multi-modal data (tabular + image dataset).
   - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first the user should have an image dataset ready in a folder along with each image's class label. 
   - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
@@ -30,7 +30,15 @@ Run the image preprocessing script to resize and augment the images:
 python image_scripts/preprocess_images.py --image_preprocess_config image_preprocess_config_file_name.json
 ```
 
-Image pre-process configuration JSON would require few fields such as:
+Image pre-process configuration JSON would require few fields such as the following example:
+
+```json
+{
+    "image_folder": "data/img_input",
+    "preprocessed_output_folder": "data/preprocessed_images",
+    "environments": "env_split"
+}
+```
   - `image_folder`: Location of the input images
   - `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use during image_only or multimodal training
   - `environments`: Name of the Environment split variable
@@ -161,8 +169,9 @@ The following fields are only
 ```
     
   The above example maps the image and tabular environments as follows:
-  Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
-  Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
+  Image environments `rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform` + tabular environment `0` → Unified environment `env1`.
+
+  Image environments `horizontal_flip_transform, original_resized, vertical_flip_transform` + tabular environment `1` → Unified environment `env2`.
 
 The merged dataset pickle file will be saved to the file named in the field `data_options.dataset_fp` so that the CRISP ensemble can use the merged image+tabular features as the dataset.
 
