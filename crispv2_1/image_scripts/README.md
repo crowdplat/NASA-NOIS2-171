@@ -23,7 +23,7 @@ pip install -r requirements_new.txt
   - Currently, the image module of CRISP only supports **binary classification** (two classes, 0 or 1). **To run the image modules of the CRISP for multimodal or image only experiments, first the user should have an image dataset ready in a directory along with each image's class label.** 
   - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
 
-## 1. Image Preprocess
+## 1. Image Preprocess Script
 Run the image preprocessing script to resize and augment the images:
 
 ```sh
@@ -49,7 +49,7 @@ The image pre-process module will create the following environments during the i
 
 The image pre-process module will save images into **6 environments** named as: `original_resized`, `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
 
-## 2. Train CRISP ensemble of models
+## 2. Train image model + CRISP ensemble of models
 Once the images are preprocessed, the user can train the CRISP ensemble. The training pipeline now supports both image-only experiment and multimodal experiment (image + tabular data).
 
 Sample command to run the main training script:
@@ -140,7 +140,7 @@ Following are the other newly added fields related to image modules. The require
   - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `32`, `0.0001`, and `100`, respectively.
   - `model_save_path`: Path to save the trained model file (extension should be `.pth`). Default value `image_model_saved/image_model.pth`
   - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images. (extension should be `.pkl` or `.pickle`) *
-  - `tabular_features_path`: Path for the prepraed tabular dataset/Gene expression data  (extension should be `.pkl` or `.pickle`) *
+  - `tabular_features_path`: Path for the tabular dataset/Gene expression data  (extension should be `.pkl` or `.pickle`) *
 
 **Grad-CAM & Feature Visualization**
 - `image_model_gradcam`:
