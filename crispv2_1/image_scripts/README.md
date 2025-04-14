@@ -131,7 +131,7 @@ Following are the other newly added fields related to image modules. The require
   - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`. Default `false`
   - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `32`, `0.0001`, and `100`, respectively.
   - `model_save_path`: Path to save the trained model file (extension should be `.pth`). Default value `image_model_saved/image_model.pth`
-  - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images. (extension should be `.pth`)
+  - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images. (extension should be `.pkl` or `.pickle`) *
   - `tabular_features_path`: Path for the prepraed tabular dataset/Gene expression data  (extension should be `.pkl` or `.pickle`) *
 
 **Grad-CAM & Feature Visualization**
