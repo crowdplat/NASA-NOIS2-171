@@ -37,7 +37,9 @@ Image pre-process configuration JSON would require few fields such as:
 
 For the user's convenient, the image pre-processing script will also save a CSV file (e.g., named `labels.csv`) inside the output folder, listing the original and transformed image filenames along with their corresponding environment names (e.g., `image_name`, `env_split`) . User need to then modify this file by adding the image class labels and sample/subject keys (if any) to this CSV file for running through the the next steps during model training. 
 
-The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. Along with the original resized images there will 5 more environments created by the image pre-processing script namely `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
+The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. Along with the original (`original_resized`) images there will 5 more environments created by the image pre-processing script. 
+
+The image pre-process module will save images into 6 environments named as: `original_resized`, `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
 
 ## 2. Train CRISP ensemble of models
 Once the images are preprocessed, the user can train the CRISP ensemble. The training pipeline now supports both image-only experiment and multimodal experiment (image + tabular data).
@@ -116,7 +118,7 @@ The **`experiment_type`** parameter is added to distinguish between type of expe
 `multimodal`: for both image and tabular data mix
 `image_only`: if the user wants to run on image dataset only
 
-For any other value such as `tabular_only` (default value), it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+For any other value such as `tabular_only` (this is the default value), it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
 
 Following are the other newly added fields related to image modules. The required fields are indicated by `*` at the end of each field description. 
 
@@ -128,19 +130,21 @@ Following are the other newly added fields related to image modules. The require
   - `split_ratio`: The training data ratio to train the image model. Default `0.8`
   - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`. Default `false`
   - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `32`, `0.0001`, and `100`, respectively.
-  - `model_save_path`: Path to save the trained model file. Default value `image_model_saved/image_model.pth`
-  - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images.
-  - `tabular_features_path`: Path for the prepraed tabular dataset (e.g., Gene expression data) *
+  - `model_save_path`: Path to save the trained model file (extension should be `.pth`). Default value `image_model_saved/image_model.pth`
+  - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images. (extension should be `.pth`)
+  - `tabular_features_path`: Path for the prepraed tabular dataset/Gene expression data  (extension should be `.pkl` or `.pickle`) *
 
 **Grad-CAM & Feature Visualization**
 - `image_model_gradcam`:
-    `apply_gradcam`: Boolean flag to save Grad-CAM heatmaps for all images (the save location is specified via `gradcam_output_save_path`).
+    `apply_gradcam`: Boolean flag indicating whether to save Grad-CAM heatmaps for all images or not (the save location is specified via `gradcam_output_save_path`).
 - `gradcam_features_explainer`:
     - `save_path`: Folder path for saving Grad-CAM visualizations.
-    - `show_clusters`: Boolean flag to visualize cluster contours on the heatmap.
-    - `show_com`: Boolean flag to visualize the center of mass on the heatmap.
+    - `show_clusters`: Boolean flag indicating whether to save visualizer cluster contours on the heatmap.
+    - `show_com`: Boolean flag indicating whether to save visualizer the center of mass on the heatmap.
  
 **Image and Tabular Data Merge**
+
+The following fields are only 
 - `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an example if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed:
   - `environment_split_unified`:
     `{
@@ -148,6 +152,6 @@ Following are the other newly added fields related to image modules. The require
             "env2": {"img_env": ["horizontal_flip_transform", "original_resized", "vertical_flip_transform"], "tabular_env": [1]}
         }`
     
-    The above example maps as follows:
+    The above example maps the image and tabular environments as follows:
     Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
     Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
