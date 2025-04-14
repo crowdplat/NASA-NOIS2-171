@@ -15,7 +15,7 @@ def run(config):
     experiment_type = config.get("experiment_type", "tabular_only")  # Default to tabular_only
     if(experiment_type=='image_only' or experiment_type=='multimodal'):
         # Train the image model first
-        image_model_training_type = config["image_data"]["image_model_training_type"]
+        image_model_training_type = config["image_data"].get("image_model_training_type", "train_test_split")
         if(image_model_training_type=='train_test_split'):
             model = train_image_model(config)
         elif(image_model_training_type=='full_loocv'):
