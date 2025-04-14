@@ -14,15 +14,20 @@ conda activate crisp2_1
 ```
 
 Then, use the followiwng command to install packages from the virtual environment:
-`pip install -r requirements_new.txt`
+```sh
+pip install -r requirements_new.txt
+```
 
 ## Notes
   - CRISP now has the support for tabular only (same as previous version), image only, and multi-modal data (tabular + image dataset).
   - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label. 
 
 ## 1. Image Preprocess
-Run the image preprocessing script to resize, normalize, and augment the images:\
-`python image_scripts/preprocess_images.py --image_preprocess_config experiment_configs/image_preprocess.json`
+Run the image preprocessing script to resize, normalize, and augment the images:
+
+```sh
+python image_scripts/preprocess_images.py --image_preprocess_config experiment_configs/image_preprocess_config_file_name.json
+```
 
 Image pre-process configuration JSON would require few parameters
   - `image_folder`: Location of the input images
@@ -35,18 +40,20 @@ The script will save a CSV file (e.g., labels.csv) inside the output folder, lis
 Once the images are preprocessed, you can train the CRISP ensemble. The training pipeline now supports both image-only runs and multimodal runs (image + tabular data).
 
 **Run the main training script:**
-`python main.py --experiment_config experiment_configs/config.json`
+```sh
+python main.py --experiment_config experiment_configs/config_file_name.json`
+```
 
 ### Configuration File Overview
 The configuration file controls the behavior of the pipelines. Following is a sample config JSON to demonstrate the key new sections added for the image model include:
 
 ```json
 {
-    "name": "Example synthetic",
+    "name": "Example Multimodal",
     "short_name": "example",
     "experiment_type": "multimodal", 
     "verbose": 1,
-    "test_val_split": [0.1, 0.1],
+    "test_val_split": [0.2, 0.1],
     "data_options": {
         "dataset_fp": "data/merged_db.pickle",
         "subject_keys": "Subj_ID",
@@ -57,9 +64,9 @@ The configuration file controls the behavior of the pipelines. Following is a sa
 	"output_data_regime": "binary"
     },
     "feature_selection_options": {
-        "max_features": 20,
+        "max_features": 40,
         "verbose": 0,
-        "seed": 12
+        "seed": 123
     },
     "ensemble_options": {
         "models": ["RF", "ICP", "NLICP", "IRM", "LIRM"]
