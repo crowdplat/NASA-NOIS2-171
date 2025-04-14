@@ -1,9 +1,9 @@
 # Steps for running CRISP with image modules
 
 ## Package Installation
-Ensure you have a working version of **Python 3.7** and then need to install all required packages. 
+Ensure to have a working version of **Python 3.7** and then need to install all required packages. The Python version restriction is mainly for supporting the streamlit web output/results, otherwise for only running the experiment scripts future Python versions also work.
 
-Conda users, can use the following commands:
+Conda users, can use the following commands to create a virtual environment with required Python version:
 
 ```sh
 conda create --name crisp2_1 python=3.7
@@ -13,39 +13,44 @@ conda create --name crisp2_1 python=3.7
 conda activate crisp2_1
 ```
 
-Then, use the followiwng command to install packages from the virtual environment:
+Then, use the following command to install packages from the virtual environment:
 ```sh
 pip install -r requirements_new.txt
 ```
 
 ## Notes
-  - CRISP now has the support for tabular only (same as previous version), image only, and multi-modal data (tabular + image dataset).
-  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label. 
+  - CRISP now supports tabular only data (same as previous version), image only, and multi-modal data (tabular + image dataset).
+  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first the user should have an image dataset ready in a folder along with each image's class label. 
+  - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
 
 ## 1. Image Preprocess
 Run the image preprocessing script to resize, normalize, and augment the images:
 
 ```sh
-python image_scripts/preprocess_images.py --image_preprocess_config experiment_configs/image_preprocess_config_file_name.json
+python image_scripts/preprocess_images.py --image_preprocess_config image_preprocess_config_file_name.json
 ```
 
-Image pre-process configuration JSON would require few parameters
+Image pre-process configuration JSON would require few fields such as:
   - `image_folder`: Location of the input images
-  - `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use
+  - `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use during image_only or multimodal training
   - `environments`: Name of the Environment split variable
 
-The script will save a CSV file (e.g., labels.csv) inside the output folder, listing the original and transformed image filenames along with their corresponding environment names (e.g., `iamge_name`, `env_split`) . User can add the image labels and sample/subject keys in this CSV file for running through the the next steps. 
+For the user's convenient, the image pre-processing script will also save a CSV file (e.g., named `labels.csv`) inside the output folder, listing the original and transformed image filenames along with their corresponding environment names (e.g., `image_name`, `env_split`) . User need to then modify this file by adding the image class labels and sample/subject keys (if any) to this CSV file for running through the the next steps during model training. 
+
+The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. 
 
 ## 2. Train CRISP ensemble of models
-Once the images are preprocessed, you can train the CRISP ensemble. The training pipeline now supports both image-only runs and multimodal runs (image + tabular data).
+Once the images are preprocessed, the user can train the CRISP ensemble. The training pipeline now supports both image-only experiment and multimodal experiment (image + tabular data).
 
-**Run the main training script:**
+**Sample command to run the main training script:**
 ```sh
 python main.py --experiment_config experiment_configs/config_file_name.json
 ```
 
 ### Configuration File Overview
-The configuration file controls the behavior of the pipelines. Following is a sample config JSON to demonstrate the key new sections added for the image model include:
+The configuration file controls the behavior of the pipelines. The configuration file has all the fields required by the earlier version of CRISP (Crisp 1.1) and on top of that some new fields are included to accommodate image only and multimodal experiments. 
+
+Following is a sample config JSON to demonstrate the key new sections added for the image model include:
 
 ```json
 {
@@ -74,7 +79,7 @@ The configuration file controls the behavior of the pipelines. Following is a sa
     
     "image_data": {
         "image_dir": "data/preprocessed_images/",
-        "labels_csv": "data/csvs/rr3_image_dataset_labels.csv",
+        "labels_csv": "data/labels.csv",
         "model_type": "DenseNet121",
         "image_model_training_type": "train_test_split", 
         "split_ratio": 0.85,
@@ -110,12 +115,13 @@ The configuration file controls the behavior of the pipelines. Following is a sa
 The **`experiment_type`** parameter is added to distinguish between type of experiment run. It can have value such as 
 `multimodal`: for both image and tabular data mix
 `image_only`: if the user wants to run on image dataset only
-For any other value such as `tabular`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+
+For any other value such as `tabular_only`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
 
 **Image Data:** 
-  - `image_dir`: Path to the image directory.
-  - `labels_csv`: Path to the image labels CSV file.
-  - `model_type`: Type of model to train (CNN_Scratch or DenseNet121).
+  - `image_dir`: Path to the image directory. *
+  - `labels_csv`: Path to the image labels CSV file. *
+  - `model_type`: Type of model to train (CNN_Scratch or DenseNet121). Default value `DenseNet121`
   - `image_model_training_type`: Type of training/validation (values can be set to `train_test_split` for typical train test with a specified `split_raio`. Another option is `full_loocv` for LOOCV validation based training on full data. Both approaches will save the trained model for later useage such as gradcam features extractions.
   - `split_ratio`: The training data ratio to train the image model. Default `0.8`
   - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`.
