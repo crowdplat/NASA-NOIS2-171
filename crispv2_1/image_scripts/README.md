@@ -6,13 +6,15 @@ Ensure you have a working version of **Python 3.7** and then need to install all
 Conda users, can use the following commands:
 
 `conda create --name crisp2_1 python=3.7`
+
 `conda activate crisp2_1`
 
 Then, use the followiwng command to install packages from the virtual environment:
 `pip install -r requirements_new.txt`
 
 ## Notes
-  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label.
+  - CRISP now has the support for tabular only (same as previous version), image only, and multi-modal data (tabular + image dataset).
+  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first have an image dataset ready in a folder along with each image's class label. 
 
 ## 1. Image Preprocess
 Run the image preprocessing script to resize, normalize, and augment the images:\
