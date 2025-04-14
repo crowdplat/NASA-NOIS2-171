@@ -41,7 +41,7 @@ Once the images are preprocessed, you can train the CRISP ensemble. The training
 
 **Run the main training script:**
 ```sh
-python main.py --experiment_config experiment_configs/config_file_name.json`
+python main.py --experiment_config experiment_configs/config_file_name.json
 ```
 
 ### Configuration File Overview
@@ -50,13 +50,13 @@ The configuration file controls the behavior of the pipelines. Following is a sa
 ```json
 {
     "name": "Example Multimodal",
-    "short_name": "example",
+    "short_name": "multimodal_example",
     "experiment_type": "multimodal", 
     "verbose": 1,
     "test_val_split": [0.2, 0.1],
     "data_options": {
         "dataset_fp": "data/merged_db.pickle",
-        "subject_keys": "Subj_ID",
+        "subject_keys": "sample",
         "targets": ["label"],
         "predictors": "All",
         "environments": ["env_split"],
@@ -107,7 +107,10 @@ The configuration file controls the behavior of the pipelines. Following is a sa
 }
 ```
 
-The `experiment_type` parameter is added to distinguish between type of experiment run. It can have value such as `multimodal` for both image and tabular data mix training. For CRISP to use only image data, it can have value `image_only`. For any other value such as `tabular`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
+The **`experiment_type`** parameter is added to distinguish between type of experiment run. It can have value such as 
+`multimodal`: for both image and tabular data mix
+`image_only`: if the user wants to run on image dataset only
+For any other value such as `tabular`, it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
 
 **Image Data:** 
   - `image_dir`: Path to the image directory.
