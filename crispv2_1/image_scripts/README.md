@@ -147,16 +147,24 @@ Following are the other newly added fields related to image modules. The require
 The following fields are only 
 - `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an example if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed:
   - `environment_split_unified`:
-    `{
-            "env1": {"img_env": ["rotate_90_transform", "gaussian_blur_transform", "brightness_contrast_transform"], "tabular_env": [0]},
-            "env2": {"img_env": ["horizontal_flip_transform", "original_resized", "vertical_flip_transform"], "tabular_env": [1]}
-        }`
+```json
+"environment_split_unified": {
+  "env1": {
+    "img_env": ["rotate_90_transform", "gaussian_blur_transform", "brightness_contrast_transform"], 
+    "tabular_env": [0]
+    },
+  "env2": {
+    "img_env": ["horizontal_flip_transform", "original_resized", "vertical_flip_transform"], 
+    "tabular_env": [1]
+    }
+}
+```
     
-    The above example maps the image and tabular environments as follows:
-    Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
-    Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
+  The above example maps the image and tabular environments as follows:
+  Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
+  Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
 
-## 2. Visualise results using streamlit frontend
+## 3. Visualise results using streamlit frontend
 
 Run streamlit by running the streamlit_main.py by the following command
 
