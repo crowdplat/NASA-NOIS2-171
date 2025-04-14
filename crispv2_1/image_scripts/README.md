@@ -20,7 +20,7 @@ pip install -r requirements_new.txt
 
 ## Additional Notes
   - CRISP now supports tabular only data (same as previous version), image only, and multi-modal data (tabular + image dataset).
-  - Currently, the image module of CRISP only supports **binary classification (two classes, 0 or 1)**. To run the image modules of the CRISP, first the user should have an image dataset ready in a folder along with each image's class label. 
+  - Currently, the image module of CRISP only supports **binary classification** (two classes, 0 or 1). **To run the image modules of the CRISP for multimodal or image only experiments, first the user should have an image dataset ready in a directory along with each image's class label.** 
   - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
 
 ## 1. Image Preprocess
@@ -47,12 +47,12 @@ For the user's convenient, the image pre-processing script will also save a CSV 
 
 The image pre-process module will create the following environments during the image processing and save each image as `.npy` format in corresponding folder. Along with the original (`original_resized`) images there will 5 more environments created by the image pre-processing script. 
 
-The image pre-process module will save images into 6 environments named as: `original_resized`, `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
+The image pre-process module will save images into **6 environments** named as: `original_resized`, `horizontal_flip_transform`, `vertical_flip_transform`, `rotate_90_transform`, `brightness_contrast_transform`, `gaussian_blur_transform`
 
 ## 2. Train CRISP ensemble of models
 Once the images are preprocessed, the user can train the CRISP ensemble. The training pipeline now supports both image-only experiment and multimodal experiment (image + tabular data).
 
-**Sample command to run the main training script:**
+Sample command to run the main training script:
 ```sh
 python main.py --experiment_config experiment_configs/config_file_name.json
 ```
@@ -144,15 +144,16 @@ Following are the other newly added fields related to image modules. The require
 
 **Grad-CAM & Feature Visualization**
 - `image_model_gradcam`:
-    `apply_gradcam`: Boolean flag indicating whether to save Grad-CAM heatmaps for all images or not (the save location is specified via `gradcam_output_save_path`).
+    `apply_gradcam`: Boolean flag (`true` or `false`) indicating whether to save Grad-CAM heatmaps for all images or not (the save location is specified via `gradcam_output_save_path`).
 - `gradcam_features_explainer`:
     - `save_path`: Folder path for saving Grad-CAM visualizations.
-    - `show_clusters`: Boolean flag indicating whether to save visualizer cluster contours features on the heatmap.
-    - `show_com`: Boolean flag indicating whether to save visualizer the center of mass features on the heatmap.
+    - `show_clusters`: Boolean flag (`true` or `false`) indicating whether to save visualizer cluster contours features on the heatmap.
+    - `show_com`: Boolean flag (`true` or `false`) indicating whether to save visualizer the center of mass features on the heatmap.
  
 **Image and Tabular Data Merge**
 
-The following fields are only 
+The following fields are only required during `multimodal` experiments to combine tabular and image data by an unified setting.
+
 - `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an **example** if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed.
   - `environment_split_unified`:
 ```json
