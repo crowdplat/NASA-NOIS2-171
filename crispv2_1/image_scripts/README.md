@@ -139,13 +139,13 @@ Following are the other newly added fields related to image modules. The require
     `apply_gradcam`: Boolean flag indicating whether to save Grad-CAM heatmaps for all images or not (the save location is specified via `gradcam_output_save_path`).
 - `gradcam_features_explainer`:
     - `save_path`: Folder path for saving Grad-CAM visualizations.
-    - `show_clusters`: Boolean flag indicating whether to save visualizer cluster contours on the heatmap.
-    - `show_com`: Boolean flag indicating whether to save visualizer the center of mass on the heatmap.
+    - `show_clusters`: Boolean flag indicating whether to save visualizer cluster contours features on the heatmap.
+    - `show_com`: Boolean flag indicating whether to save visualizer the center of mass features on the heatmap.
  
 **Image and Tabular Data Merge**
 
 The following fields are only 
-- `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an example if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed:
+- `multimodal_merge_options`: This parameter takes the environment split names to perform tabular and image merge based on mentioned config. Here is an **example** if we have 6 environments for image data and 2 envs for tabular data. User can modify as needed.
   - `environment_split_unified`:
 ```json
 "environment_split_unified": {
