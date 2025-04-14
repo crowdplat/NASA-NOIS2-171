@@ -5,9 +5,13 @@ Ensure you have a working version of **Python 3.7** and then need to install all
 
 Conda users, can use the following commands:
 
-`conda create --name crisp2_1 python=3.7`
+```sh
+conda create --name crisp2_1 python=3.7
+```
 
-`conda activate crisp2_1`
+```sh
+conda activate crisp2_1
+```
 
 Then, use the followiwng command to install packages from the virtual environment:
 `pip install -r requirements_new.txt`
