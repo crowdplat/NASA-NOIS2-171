@@ -115,8 +115,8 @@ Following is a sample config JSON to demonstrate the key new sections added for 
 ```
 
 The **`experiment_type`** parameter is added to distinguish between type of experiment run. It can have value such as 
-`multimodal`: for both image and tabular data mix
-`image_only`: if the user wants to run on image dataset only
+`multimodal`: For experiment both image and tabular data mix
+`image_only`: For experiment on image dataset only. Note that, the pickle file name should be the same in both `data_options.dataset_fp` and `image_data.gradcam_features_save_path`
 
 For any other value such as `tabular_only` (this is the default value), it will run CRISP like earlier version with tabular dataset as specified in the `dataset_fp` parameter.
 
@@ -163,6 +163,8 @@ The following fields are only
   The above example maps the image and tabular environments as follows:
   Image environments rotate_90_transform, gaussian_blur_transform, brightness_contrast_transform + tabular environment 0 → Unified environment env1.
   Image environments horizontal_flip_transform, original_resized, vertical_flip_transform + tabular environment 1 → Unified environment env2.
+
+The merged dataset pickle file will be saved to the file named in the field `data_options.dataset_fp` so that the CRISP ensemble can use the merged image+tabular features as the dataset.
 
 ## 3. Visualise results using streamlit frontend
 
