@@ -6,16 +6,21 @@ Ensure to have a working version of **Python 3.7** and then need to install all 
 Conda users, can use the following commands to create a virtual environment with required Python version:
 
 ```sh
-conda create --name crisp2_1 python=3.7
-```
+  1. conda create --name crisp2_1 python=3.7
 
-```sh
-conda activate crisp2_1
-```
+  2. conda activate crisp2_1
 
-Then, use the following command to install packages from the virtual environment:
-```sh
-pip install -r requirements_new.txt
+  3. conda install -c conda-forge opencv==4.5.3
+
+  4. pip install -r requirements_new.txt
+
+  5. pip install albumentations==1.3.1 --no-deps
+
+  6. pip install scikit-image==0.19.3
+
+  7. pip install monai==1.1.0 --no-deps
+
+  8. pip install qudida --no-deps
 ```
 
 ## Additional Notes
