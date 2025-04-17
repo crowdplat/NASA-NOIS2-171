@@ -80,7 +80,7 @@ Following is a sample config JSON to demonstrate the key new sections added for 
         "targets": ["label"],
         "predictors": "All",
         "environments": ["env_split"],
-        "exclude": ["sample", "image_name", "label", "env_split"],
+        "exclude": ["sample", "image_name", "label", "env_split", "env_split_img", "env_split_tabular"],
 	"output_data_regime": "binary"
     },
     "feature_selection_options": {
