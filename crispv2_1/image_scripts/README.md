@@ -26,6 +26,8 @@ Conda users, can use the following commands to create a virtual environment with
 ## Additional Notes
   - CRISP now supports tabular only data (same as previous version), image only, and multi-modal data (tabular + image dataset).
   - Currently, the image module of CRISP only supports **binary classification** (two classes, 0 or 1). **To run the image modules of the CRISP for multimodal or image only experiments, first the user should have an image dataset ready in a directory along with each image's class label.** 
+  - The image model is better suited (in terms of performance) for biological images with one segments per image. To give an example, if the all images are from brain samples of subjects then it should be fine but if the data has mix of different segments such as brain segment+liver segment, then it won't be preferable for the image model.
+  - The image models (`CNN_Scratch` or `DenseNet121`) are based on Deep Learning CNN-based architectures, so the model would require sufficient amount of data (images) to get trained on. CRISP will do augmentation to mitigate data scarcity challenges, but sufficient amount of input image data would help to get better performance and causal features.
   - The tabular only data analysis modules should work similar to the earlier version of CRISP. The following content only explains `image_only` or `multimodal` experiments.
 
 ## 1. Image Preprocess Script
@@ -65,7 +67,61 @@ python main.py --experiment_config experiment_configs/config_file_name.json
 ### Configuration File Overview
 The configuration file controls the behavior of the pipelines. The configuration file has all the fields required by the earlier version of CRISP (Crisp 1.1) and on top of that some new fields are included to accommodate image only and multimodal experiments. 
 
-Following is a sample config JSON to demonstrate the key new sections added for the image model include:
+Following is a sample/template config JSON required for **image_only** experiment type:
+
+```json
+{
+    "name": "Example Image Only",
+    "short_name": "image_only_example",
+    "experiment_type": "image_only", 
+    "verbose": 1,
+    "test_val_split": [0.2, 0.1],
+    "data_options": {
+        "dataset_fp": "data/image_features.pkl",
+        "subject_keys": "sample",
+        "targets": ["label"],
+        "predictors": "All",
+        "environments": ["env_split"],
+        "exclude": ["sample", "image_name", "label", "env_split"],
+	"output_data_regime": "binary"
+    },
+    "feature_selection_options": {
+        "max_features": 40,
+        "verbose": 0,
+        "seed": 123
+    },
+    "ensemble_options": {
+        "models": ["RF", "ICP", "NLICP", "IRM", "LIRM"]
+    },
+    
+    "image_data": {
+        "image_dir": "data/preprocessed_images/",
+        "labels_csv": "data/labels.csv",
+        "model_type": "DenseNet121",
+        "image_model_training_type": "train_test_split", 
+        "split_ratio": 0.85,
+        "augmentation": true, 
+        "batch_size": 64,
+        "learning_rate": 0.0001,
+        "num_epochs": 100,
+        "model_save_path": "image_model_saved/image_model.pth",
+        "gradcam_features_save_path": "data/image_features.pkl",
+
+        "image_model_gradcam": {
+            "apply_gradcam": true,
+            "gradcam_output_save_path": "data/gradcam_outputs"
+        },
+
+        "gradcam_features_explainer":{
+            "save_path": "data/gradcam_features_explainer",
+            "show_clusters": false,
+            "show_com": false
+        }
+    }
+}
+```
+
+Following is a sample/template config JSON required for **multimodal** experiment type:
 
 ```json
 {
@@ -75,7 +131,7 @@ Following is a sample config JSON to demonstrate the key new sections added for 
     "verbose": 1,
     "test_val_split": [0.2, 0.1],
     "data_options": {
-        "dataset_fp": "data/merged_db.pickle",
+        "dataset_fp": "data/merged_db.pkl",
         "subject_keys": "sample",
         "targets": ["label"],
         "predictors": "All",
@@ -103,7 +159,7 @@ Following is a sample config JSON to demonstrate the key new sections added for 
         "learning_rate": 0.0001,
         "num_epochs": 100,
         "model_save_path": "image_model_saved/image_model.pth",
-        "gradcam_features_save_path": "data/gradcam_features.pkl",
+        "gradcam_features_save_path": "data/image_features.pkl",
         "tabular_features_path": "data/tabular_db.pickle",
 
         "image_model_gradcam": {
