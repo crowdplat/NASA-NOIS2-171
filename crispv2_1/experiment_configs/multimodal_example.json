@@ -1,51 +1,48 @@
 {
-    "name": "RR3 example",
-    "short_name": "rr3_multimodal_test",
+    "name": "Example Multimodal",
+    "short_name": "multimodal_example",
     "experiment_type": "multimodal", 
-
     "verbose": 1,
-    "causalnex_frm": 1, 
-    "test_val_split": [0.25, 0.1],
+    "test_val_split": [0.2, 0.1],
     "data_options": {
-        "dataset_fp": "data/rr3_dataset/merged_features_test.pkl",
+        "dataset_fp": "data/merged_db.pkl",
         "subject_keys": "sample",
         "targets": ["label"],
         "predictors": "All",
         "environments": ["env_split"],
-        "exclude": ["sample", "image_name", "label", "env_split",  "env_split_img", "env_split_tabular"],
+        "exclude": ["sample", "image_name", "label", "env_split", "env_split_img", "env_split_tabular"],
 	"output_data_regime": "binary"
     },
     "feature_selection_options": {
-        "max_features": 25,
+        "max_features": 40,
         "verbose": 0,
         "seed": 123
     },
     "ensemble_options": {
-        
         "models": ["RF", "ICP", "NLICP", "IRM", "LIRM"]
     },
     
     "image_data": {
-        "image_dir": "data/rr3_dataset/preprocessed_images_2/",
-        "labels_csv": "data/rr3_dataset/csvs/rr3_image_dataset_labels.csv",
-        "model_type": "DenseNet121",
+        "image_dir": "data/preprocessed_images/",
+        "labels_csv": "data/image_dataset_labels.csv",
+        "model_type": "CNN_Scratch",
         "image_model_training_type": "train_test_split", 
         "split_ratio": 0.85,
         "augmentation": true, 
         "batch_size": 64,
         "learning_rate": 0.0001,
-        "num_epochs": 100,
-        "model_save_path": "image_model_saved/image_model_rr3.pth",
-        "gradcam_features_save_path": "data/rr3_dataset/gradcam_features_test.pkl",
-        "tabular_features_path": "data/rr3_dataset/GLDS-352_rna_seq_Normalized_Counts.pickle",
+        "num_epochs": 5,
+        "model_save_path": "image_model_saved/image_model.pth",
+        "gradcam_features_save_path": "data/image_features.pkl",
+        "tabular_features_path": "data/example_tabular_db_for_multimodal_exp.pickle",
 
         "image_model_gradcam": {
-            "apply_gradcam": false,
-            "gradcam_output_save_path": "data/rr3_dataset/gradcam_outputs_test"
+            "apply_gradcam": true,
+            "gradcam_output_save_path": "data/gradcam_outputs"
         },
 
         "gradcam_features_explainer":{
-            "save_path": "data/rr3_dataset/gradcam_features_explainer_test",
+            "save_path": "data/gradcam_features_explainer",
             "show_clusters": false,
             "show_com": false
         }
