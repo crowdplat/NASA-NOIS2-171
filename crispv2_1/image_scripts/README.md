@@ -96,7 +96,7 @@ Following is a sample/template config JSON required for **image_only** experimen
     
     "image_data": {
         "image_dir": "data/preprocessed_images/",
-        "labels_csv": "data/labels.csv",
+        "labels_csv": "data/image_dataset_labels.csv",
         "model_type": "DenseNet121",
         "image_model_training_type": "train_test_split", 
         "split_ratio": 0.85,
@@ -150,8 +150,8 @@ Following is a sample/template config JSON required for **multimodal** experimen
     
     "image_data": {
         "image_dir": "data/preprocessed_images/",
-        "labels_csv": "data/labels.csv",
-        "model_type": "DenseNet121",
+        "labels_csv": "data/image_dataset_labels.csv",
+        "model_type": "CNN_Scratch",
         "image_model_training_type": "train_test_split", 
         "split_ratio": 0.85,
         "augmentation": true, 
