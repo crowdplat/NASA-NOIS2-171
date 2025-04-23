@@ -88,12 +88,11 @@ def save_merged_features(config):
     if (subject_key in overlap_columns) or (environments in overlap_columns):
         overlap_columns.remove(subject_key)
         overlap_columns.remove(environments)
-    print("overlap_columns", overlap_columns)
     
     # Remove overlapping columns from tabular data
     tabular_data_df = tabular_data_df.drop(columns=overlap_columns)
 
-    print("Tabular", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
+    print("Tabular features", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
 
     # Merge data based on environment mappings if specified
     if "multimodal_merge_options" in config:
@@ -108,7 +107,10 @@ def save_merged_features(config):
     # Normalize features (excluding specified columns)
     exclude_vars = list(set(exclude + target_var + [environments, environments+'_img', environments+'_tabular'] + ['num_activation_clusters']))
     merged_features_df = normalize_except_exclude(merged_features_df, exclude_vars)
-    
+    print("Merged data", merged_features_df.shape)
+
+    # Remove environments variable columns (_img, _tabular)
+    merged_features_df = merged_features_df.drop(columns=[environments+'_img', environments+'_tabular'])
     print("Merged data", merged_features_df.shape)
     save_path = config["data_options"]["dataset_fp"]
     print('Saving', save_path.split('.')[0] + '.csv')

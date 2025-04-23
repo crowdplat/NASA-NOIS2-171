@@ -15,6 +15,8 @@ from image_scripts.visualize_gradcam_features import Visualize_GradCAM_Features
 import matplotlib.pyplot as plt
 from scipy.ndimage import center_of_mass
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
+import warnings
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 def load_image(image_path):
         """Loads an image from file (.png, .jpg) or `.npy` array (NumPy)."""
@@ -22,7 +24,6 @@ def load_image(image_path):
             image = np.load(image_path)  # Load NumPy array
             if image.ndim != 2:  # Ensure it's grayscale
                 raise ValueError(f"Invalid shape {image.shape} for grayscale image {image_path}")
-            # return Image.fromarray(image.astype(np.uint8)*255, mode="L")  # Convert to PIL grayscale
             return Image.fromarray((image * 255).astype(np.uint8), mode="L")  # Convert to PIL grayscale
         else:
             return Image.open(image_path).convert("L")  # Load regular image file
@@ -71,7 +72,6 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
     input_image = load_image(image_path)  # Load correctly based on file type
 
     transform = transforms.Compose([
-        # transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.5], std=[0.5])
     ])
@@ -94,7 +94,6 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
 
     # Compute Center of Mass
     com_y, com_x = center_of_mass(heatmap)  # Returns (y, x) coordinates
-    height, width = heatmap.shape
 
     radial_features = compute_radial_features(heatmap)
 
@@ -131,7 +130,6 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
 
     # Compute normalized moments
     heatmap_flat = heatmap.flatten()
-    # moments_features = [moment(heatmap_flat, moment=i) for i in range(1, 5)]
 
     # Additional moments (more meaningful)
     normalized_moment_skewness  = skew(heatmap_flat)
@@ -141,7 +139,7 @@ def extract_gradcam_features(config, model, image_path, target_layer, visualize=
     features = [
         mean_activation, max_activation, spread_variance,
         contrast, homogeneity, energy, correlation,
-        num_activation_clusters, avg_cluster_size, cluster_connectivity, cluster_connectivity_normalized, com_x, com_y, normalized_moment_skewness, normalized_moment_kurtosis
+        num_activation_clusters, avg_cluster_size, cluster_connectivity_normalized, com_x, com_y, normalized_moment_skewness, normalized_moment_kurtosis
     ] + radial_features
 
     return features, radial_features
@@ -195,7 +193,7 @@ def extract_image_features(config, model):
     feature_names = [
         "mean_activation", "max_activation", "spread_variance",
         "contrast", "homogeneity", "energy", "correlation",
-        "num_activation_clusters", "avg_cluster_size", "cluster_connectivity", "cluster_connectivity_normalized", 
+        "num_activation_clusters", "avg_cluster_size", "cluster_connectivity_normalized", 
         "center_of_mass_x", "center_of_mass_y", 
         "normalized_moment_skewness", "normalized_moment_kurtosis"
     ]
