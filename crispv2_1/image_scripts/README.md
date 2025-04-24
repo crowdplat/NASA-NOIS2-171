@@ -46,7 +46,7 @@ Image pre-process configuration JSON would require few fields such as the follow
     "environments": "env_split"
 }
 ```
-  - `image_folder`: Location of the input images
+  - `image_folder`: Location of the input images. Please note that, CRISP image module will only load image files of the formats `.jpg`, `.jpeg`, `.png` in this specified folder. Any other file formats will be ignored.
   - `preprocessed_output_folder`: Path where the preprocessed images will be stored for future use during image_only or multimodal training
   - `environments`: Name of the Environment split variable
 
