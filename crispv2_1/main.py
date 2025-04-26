@@ -9,11 +9,14 @@ from image_scripts.train_image_model import train_image_model, train_image_model
 from image_scripts.extract_image_features import extract_image_features
 from image_scripts.merge_tabular_image_features import save_merged_features
 from image_scripts.gradcam import save_gradcam_output
-
+from image_scripts.validate_config import validate_json_config
 
 def run(config):
     experiment_type = config.get("experiment_type", "tabular_only")  # Default to tabular_only
     if(experiment_type=='image_only' or experiment_type=='multimodal'):
+        print('Validating JSON Config. . .')
+        validate_json_config(config)
+
         # Train the image model first
         image_model_training_type = config["image_data"].get("image_model_training_type", "train_test_split")
         if(image_model_training_type=='train_test_split'):
