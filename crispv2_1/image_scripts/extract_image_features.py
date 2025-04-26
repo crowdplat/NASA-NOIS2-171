@@ -157,7 +157,7 @@ def extract_image_features(config, model):
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
     gradcam_features_save_path = config["image_data"].get("gradcam_features_save_path", os.path.dirname(image_dir))
-    model_type = config["image_data"].get("model_type", "CNN_Scratch")
+    model_type = config["image_data"].get("model_type", "DenseNet121")
 
     # Load trained model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -64,7 +64,7 @@ def save_gradcam_output(config, model):
     # Extract paths and parameters
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
-    model_save_path = config["image_data"]["model_save_path"]
+    model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     model_type = config["image_data"].get("model_type", "DenseNet121")  # Default to DenseNet121
     gradcam_output_save_path = config["image_data"]["image_model_gradcam"]["gradcam_output_save_path"]
 
