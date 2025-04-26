@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
@@ -10,9 +11,8 @@ from torchvision import transforms
 import os
 from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_Scratch 
 import json
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
-import pandas as pd
 
 class ImageDataset(Dataset):
     """ Custom Dataset for Grayscale Image Classification """
@@ -155,6 +155,7 @@ def train_image_model(config):
 
     # Training loop
     for epoch in range(num_epochs):
+        train_losses = []
         model.train()
         for images, labels in train_loader:
             images, labels = images.to(device), labels.to(device)
@@ -163,43 +164,63 @@ def train_image_model(config):
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
+            train_losses.append(loss.item())
 
-        # Evaluate model
-        model.eval()
+        avg_train_loss = np.mean(train_losses)
+
+        # Validation loop
+        val_losses = []
         correct = 0
         total = 0
         all_labels = []
         all_probs = []
+        all_preds = []
 
+        model.eval()
         with torch.no_grad():
             for images, labels in val_loader:
                 images, labels = images.to(device), labels.to(device)
                 outputs = model(images).squeeze()
-                probs = torch.sigmoid(outputs)  # Convert logits to probabilities
-                predictions = (probs > 0.5).float()  # Convert probabilities to binary predictions
+                probs = torch.sigmoid(outputs)
+                predictions = (probs > 0.5).float()
+
+                loss = criterion(outputs, labels)
+                val_losses.append(loss.item())
 
                 correct += (predictions == labels).sum().item()
                 total += labels.size(0)
 
-                # Store probabilities and labels for AUC computation
                 all_probs.extend(probs.cpu().numpy())
                 all_labels.extend(labels.cpu().numpy())
+                all_preds.extend(predictions.cpu().numpy())
 
-        # Compute Accuracy
+        avg_val_loss = np.mean(val_losses)
         accuracy = correct / total
 
-        # Compute AUC Score (Only if both classes exist in validation set)
         try:
             auc_score = roc_auc_score(all_labels, all_probs)
         except ValueError:
-            auc_score = None  # AUC can't be computed if only one class is present
+            auc_score = None
 
-        if config["verbose"] == 1:
-            print(f"Epoch {epoch+1}/{num_epochs}: Validation Accuracy = {accuracy:.4f}")
+        try:
+            f1 = f1_score(all_labels, all_preds)
+        except ValueError:
+            f1 = None
+
+        if config.get("verbose", 1) == 1:
+            print(f"Epoch {epoch+1}/{num_epochs}")
+            print(f"  Train Loss: {avg_train_loss:.4f}")
+            print(f"  Val Loss: {avg_val_loss:.4f}")
+            print(f"  Val Accuracy: {accuracy:.4f}")
             if auc_score is not None:
-                print(f"Epoch {epoch+1}/{num_epochs}: Validation AUC Score = {auc_score:.4f}")
+                print(f"  Val AUC: {auc_score:.4f}")
             else:
-                print(f"Epoch {epoch+1}/{num_epochs}: AUC Score could not be computed (only one class in validation set).")
+                print("  Val AUC: Not Computable (single class)")
+            if f1 is not None:
+                print(f"  Val F1-Score: {f1:.4f}")
+            else:
+                print("  Val F1-Score: Not Computable (single class)")
+
 
     # Save the trained model
     save_model(model, optimizer, model_save_path)
@@ -372,4 +393,3 @@ def train_image_model_loocv(config):
     print(f"Final model {model_type} trained on the full dataset has been saved.")
 
     return final_model
-
