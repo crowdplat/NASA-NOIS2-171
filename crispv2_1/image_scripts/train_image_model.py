@@ -241,23 +241,23 @@ def train_image_model_loocv(config):
         config (dict or str): Configuration dictionary or path to a JSON file.
     """
 
-    # If config is a file path, load it as a dictionary.
+    # If config is a dictionary, use it directly. Otherwise, load from file.
     if isinstance(config, dict):
-        cfg = config
+        pass  # Use the given dictionary
     else:
         with open(config, "r") as f:
-            cfg = json.load(f)
+            config = json.load(f)
     
     # Extract parameters and paths
-    image_dir = cfg["image_data"]["image_dir"]
-    labels_csv = cfg["image_data"]["labels_csv"]
-    model_type = cfg["image_data"].get("model_type", "DenseNet121")
-    batch_size = cfg["image_data"].get("batch_size", 16)
-    learning_rate = cfg["image_data"].get("learning_rate", 0.0001)
-    num_epochs = cfg["image_data"].get("num_epochs", 100)
-    augmentation = cfg["image_data"]["augmentation"].get("augmentation", False)
+    image_dir = config["image_data"]["image_dir"]
+    labels_csv = config["image_data"]["labels_csv"]
+    model_type = config["image_data"].get("model_type", "DenseNet121")
+    batch_size = config["image_data"].get("batch_size", 16)
+    learning_rate = config["image_data"].get("learning_rate", 0.0001)
+    num_epochs = config["image_data"].get("num_epochs", 100)
+    augmentation = config["image_data"].get("augmentation", False)
     model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
-    verbose = cfg.get("verbose", 0)
+    verbose = config.get("verbose", 0)
     
     # Load CSV to determine dataset size.
     labels_df = pd.read_csv(labels_csv)
