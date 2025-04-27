@@ -67,7 +67,7 @@ python main.py --experiment_config experiment_configs/config_file_name.json
 ### Configuration File Overview
 The configuration file controls the behavior of the pipelines. The configuration file has all the fields required by the earlier version of CRISP (Crisp 1.1) and on top of that some new fields are included to accommodate image only and multimodal experiments. 
 
-Following is a sample/template config JSON required for **image_only** experiment type:
+Following is a sample/template config JSON required for **image_only** experiment type with K-fold CV:
 
 ```json
 {
@@ -98,7 +98,8 @@ Following is a sample/template config JSON required for **image_only** experimen
         "image_dir": "data/preprocessed_images/",
         "labels_csv": "data/image_dataset_labels.csv",
         "model_type": "DenseNet121",
-        "image_model_training_type": "train_test_split", 
+        "image_model_training_type": "k_fold", 
+        "k_folds": 3,
         "split_ratio": 0.85,
         "augmentation": true, 
         "batch_size": 64,
@@ -195,10 +196,19 @@ Following are the other newly added fields related to image modules. The require
   - `image_dir`: Path to the image directory. *
   - `labels_csv`: Path to the image labels CSV file. *
   - `model_type`: Type of model to train (CNN_Scratch or DenseNet121). Default value `DenseNet121`
-  - `image_model_training_type`: Type of training/validation (values can be set to `train_test_split` for typical train test with a specified `split_raio`. Another option is `full_loocv` for LOOCV validation based training on full data. Both approaches will save the trained model for later useage such as gradcam features extractions. The `full_loocv` would be more suitable for smaller image dataset, for usual medium/big sized dataset, `train_test_split` should be fine. 
-  - `split_ratio`: The training data ratio to train the image model. Default `0.8`
+  - `image_model_training_type`: Valid values are - `train_test_split`, `full_loocv`, `k_fold`
+  
+    For `image_model_training_type`=`train_test_split` type of training/validation typical train test with a specified `split_raio` (e.g., 0.8, 0.85, 0.9, etc) will run for the image model.
+    
+    Another option is `image_model_training_type`=`full_loocv` for Leave one out CV (LOOCV) validation and training on full data. 
+    
+    For `image_model_training_type`=`k_fold`: User will have to specify `k_folds` value (e.g., 3, 5, 7, etc). This setting can be used to do stratified K-Fold Cross Validation based training on full data
+
+    All three approaches will save the trained model for later useage such as gradcam features extractions. The `full_loocv` would be more suitable for smaller image dataset, for usual medium/big sized dataset, `train_test_split` should be fine for most cases. 
+
+  - `split_ratio`: The training data ratio to train the image model. This field is used only for `image_model_training_type`=`train_test_split` Default value `0.8`
   - `augmentation`: Indicates if image augmentation (rotation, sharpness adjust, resized crop, etc) should be done during image model training. Either `true` or `false`. Default `false`
-  - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `32`, `0.0001`, and `100`, respectively.
+  - `batch_size`, `learning_rate`, `num_epochs`: Image model's training hyper-parameter. These are optional values for the configuration file. Default values for `batch_size`, `learning_rate`, `num_epochs` are `16`, `0.0001`, and `100`, respectively.
   - `model_save_path`: Path to save the trained model file (extension should be `.pth`). Default value `image_model_saved/image_model.pth`
   - `gradcam_features_save_path`: Path to save the image model's gradcam heatmap features for all the images. (extension should be `.pkl` or `.pickle`) *
   - `tabular_features_path`: Path for the tabular dataset/Gene expression data  (extension should be `.pkl` or `.pickle`) *
