@@ -391,7 +391,7 @@ def train_image_model_loocv(config):
     
     # Save the final model.
     save_model(final_model, optimizer, model_save_path)
-    print(f"Final model {model_type} trained on the full dataset has been saved.")
+    print(f"Final model saved to {model_save_path}")
 
     return final_model
 
