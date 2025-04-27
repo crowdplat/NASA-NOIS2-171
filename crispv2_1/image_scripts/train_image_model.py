@@ -13,6 +13,7 @@ from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_
 import json
 from sklearn.metrics import roc_auc_score, f1_score
 from sklearn.utils.class_weight import compute_class_weight
+from sklearn.model_selection import StratifiedKFold
 
 class ImageDataset(Dataset):
     """ Custom Dataset for Grayscale Image Classification """
@@ -391,5 +392,140 @@ def train_image_model_loocv(config):
     # Save the final model.
     save_model(final_model, optimizer, model_save_path)
     print(f"Final model {model_type} trained on the full dataset has been saved.")
+
+    return final_model
+
+def train_image_model_kfold(config):
+    # Parameters
+    k_folds = config["image_data"].get("k_folds", 3)
+    model_type = config["image_data"].get("model_type", "DenseNet121")
+    batch_size = config["image_data"].get("batch_size", 16)
+    learning_rate = config["image_data"].get("learning_rate", 0.0001)
+    num_epochs = config["image_data"].get("num_epochs", 100)
+    augmentation = config["image_data"].get("augmentation", False)
+    image_dir = config["image_data"]["image_dir"]
+    labels_csv = config["image_data"]["labels_csv"]
+    model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
+    verbose = config.get("verbose", 1)
+
+    # Dataset & labels
+    full_dataset = ImageDataset(image_dir, labels_csv, augment=False)  # Base dataset without augmentation
+    labels_df = pd.read_csv(labels_csv)
+    targets = labels_df['label'].values  # Assuming 'label' column
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Stratified K-Fold setup
+    skf = StratifiedKFold(n_splits=k_folds, shuffle=True, random_state=42)
+    fold_metrics = []
+
+    for fold, (train_idx, val_idx) in enumerate(skf.split(np.zeros(len(targets)), targets)):
+        print(f"\n--- Fold {fold+1}/{k_folds} ---")
+
+        # Create train and validation subsets
+        train_subset = torch.utils.data.Subset(full_dataset, train_idx)
+        val_subset = torch.utils.data.Subset(full_dataset, val_idx)
+
+        # Apply augmentation to the training subset if enabled
+        if augmentation:
+            train_subset.dataset = ImageDataset(image_dir, labels_csv, augment=True)
+
+        # DataLoaders
+        train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
+        val_loader = DataLoader(val_subset, batch_size=batch_size, shuffle=False)
+
+        # Model
+        model = TransferLearningImageClassifier().to(device) if model_type == "DenseNet121" else CNN_Scratch().to(device)
+
+        # Class Weights
+        train_labels_list = [targets[i] for i in train_idx]
+        if len(np.unique(train_labels_list)) == 2:
+            class_weights = compute_class_weight(class_weight='balanced', classes=[0, 1], y=train_labels_list)
+            pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+        else:
+            pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+
+        criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+        optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+        # Training for this fold
+        for epoch in range(num_epochs):
+            model.train()
+            train_losses = []
+            for images, labels in train_loader:
+                images, labels = images.to(device), labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images).squeeze()
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                train_losses.append(loss.item())
+            avg_train_loss = np.mean(train_losses)
+
+        # Validation
+        model.eval()
+        val_losses = []
+        all_labels, all_probs, all_preds = [], [], []
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                outputs = model(images).squeeze()
+                probs = torch.sigmoid(outputs)
+                preds = (probs > 0.5).float()
+                loss = criterion(outputs, labels)
+                val_losses.append(loss.item())
+                all_labels.extend(labels.cpu().numpy())
+                all_probs.extend(probs.cpu().numpy())
+                all_preds.extend(preds.cpu().numpy())
+
+        accuracy = np.mean(np.array(all_preds) == np.array(all_labels))
+        avg_val_loss = np.mean(val_losses)
+        auc_score = roc_auc_score(all_labels, all_probs) if len(np.unique(all_labels)) > 1 else None
+        f1 = f1_score(all_labels, all_preds) if len(np.unique(all_labels)) > 1 else None
+
+        if verbose:
+            print(f"Train Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f} | Val Acc: {accuracy:.4f}")
+            print(f"Val AUC: {auc_score if auc_score is not None else 'Not Computable'} | F1: {f1 if f1 is not None else 'Not Computable'}")
+
+        fold_metrics.append({
+            "train_loss": avg_train_loss,
+            "val_loss": avg_val_loss,
+            "accuracy": accuracy,
+            "auc": auc_score,
+            "f1": f1
+        })
+
+    # Aggregate Metrics
+    print("\n--- K-Fold Results ---")
+    for metric in ["train_loss", "val_loss", "accuracy", "auc", "f1"]:
+        values = [m[metric] for m in fold_metrics if m[metric] is not None]
+        if values:
+            print(f"{metric}: {np.mean(values):.4f} ± {np.std(values):.4f}")
+
+    # Retrain on Full Dataset
+    print("\nRetraining on full dataset...")
+    full_loader = DataLoader(full_dataset, batch_size=batch_size, shuffle=True)
+    final_model = TransferLearningImageClassifier().to(device) if model_type == "DenseNet121" else CNN_Scratch().to(device)
+    if len(np.unique(targets)) == 2:
+        class_weights = compute_class_weight(class_weight='balanced', classes=[0, 1], y=targets)
+        pos_weight = torch.tensor([class_weights[1]], dtype=torch.float).to(device)
+    else:
+        pos_weight = torch.tensor([1.0], dtype=torch.float).to(device)
+    criterion = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    optimizer = torch.optim.Adam(final_model.parameters(), lr=learning_rate)
+
+    for epoch in range(num_epochs):
+        final_model.train()
+        for images, labels in full_loader:
+            images, labels = images.to(device), labels.to(device)
+            optimizer.zero_grad()
+            outputs = final_model(images).squeeze()
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+        if verbose:
+            print(f"Full dataset training - Epoch {epoch+1}/{num_epochs} completed.")
+
+    save_model(final_model, optimizer, model_save_path)
+    print(f"Final model saved to {model_save_path}")
 
     return final_model

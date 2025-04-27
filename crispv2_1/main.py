@@ -5,7 +5,7 @@ from dataio.datasets import get_datasets_for_experiment
 from utils.gcp_helpers import save_json_to_bucket, save_dataframe_to_bucket
 from utils.plotting import plot_most_predictive
 from utils.vm_helpers import save_dict_to_json
-from image_scripts.train_image_model import train_image_model, train_image_model_loocv
+from image_scripts.train_image_model import train_image_model, train_image_model_loocv, train_image_model_kfold
 from image_scripts.extract_image_features import extract_image_features
 from image_scripts.merge_tabular_image_features import save_merged_features
 from image_scripts.gradcam import save_gradcam_output
@@ -19,12 +19,15 @@ def run(config):
 
         # Train the image model first
         image_model_training_type = config["image_data"].get("image_model_training_type", "train_test_split")
-        if(image_model_training_type=='train_test_split'):
+        if image_model_training_type == 'train_test_split':
             model = train_image_model(config)
-        elif(image_model_training_type=='full_loocv'):
+        elif image_model_training_type == 'full_loocv':
             model = train_image_model_loocv(config)
+        elif image_model_training_type == 'k_fold':
+            from image_scripts.train_image_model import train_image_model_kfold
+            model = train_image_model_kfold(config)
         else:
-            print("Error: Incorrect value for config parameter [image_model_training_type]! Correct choices: train_test_split or full_loocv. Value found:", image_model_training_type)
+            print("Error: Incorrect value for config parameter [image_model_training_type]! Correct choices: train_test_split, full_loocv, or k_fold. Value found:", image_model_training_type)
             return
 
         apply_gradcam = config["image_data"]["image_model_gradcam"]["apply_gradcam"]
