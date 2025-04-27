@@ -54,6 +54,15 @@ def validate_json_config(config):
     else:
         warnings.append(f"'model_type' not specified in 'image_data'. Default will be used: 'DenseNet121'.")
 
+    # Validate 'image_model_training_type'
+    valid_training_types = ['train_test_split', 'full_loocv', 'k_fold']
+    training_type = image_data.get('image_model_training_type')
+    if training_type:
+        if training_type not in valid_training_types:
+            errors.append(f"'image_model_training_type' should be one of {valid_training_types}, found '{training_type}'")
+    else:
+        warnings.append(f"'image_model_training_type' not specified in 'image_data'. Default will be used: 'train_test_split'.")
+
     # Validate 'augmentation'
     if 'augmentation' in image_data:
         if not isinstance(image_data['augmentation'], bool):
