@@ -8,9 +8,6 @@ class TransferLearningImageClassifier(nn.Module):
     def __init__(self, num_classes=1):
         super(TransferLearningImageClassifier, self).__init__()
         self.model = DenseNet121(spatial_dims=2, in_channels=1, out_channels=num_classes)
-        
-        # # Modify the pooling layer to ensure fixed feature extraction
-        # self.model.features[-1] = nn.AdaptiveAvgPool2d((2, 2))  # Replace last pooling layer
 
     def forward(self, x):
         return self.model(x)
@@ -33,10 +30,10 @@ class CNN_Scratch(nn.Module):
         self.conv4 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.pool4 = nn.MaxPool2d(2, 2)  # Downsampling
 
-        self.global_avg_pool = nn.AdaptiveAvgPool2d((2, 2))  # Ensure same feature size as DenseNet
+        self.global_avg_pool = nn.AdaptiveAvgPool2d((2, 2))
         self.dropout = nn.Dropout(0.25)
 
-        self.fc1 = nn.Linear(256 * 2 * 2, 128)  # Adjusted for the new feature size
+        self.fc1 = nn.Linear(256 * 2 * 2, 128)
         self.fc2 = nn.Linear(128, 1)
 
     def forward(self, x):
@@ -45,9 +42,8 @@ class CNN_Scratch(nn.Module):
         x = self.pool3(torch.relu(self.bn3(self.conv3(x))))
         x = self.pool4(torch.relu(self.conv4(x)))
 
-        x = self.global_avg_pool(x)  # Adaptive pooling ensures fixed feature size
-        x = torch.flatten(x, start_dim=1)  # Flatten correctly
-        # print(f"Flattened feature size: {x.shape}")  # Debug print
+        x = self.global_avg_pool(x) 
+        x = torch.flatten(x, start_dim=1) 
 
         x = self.dropout(torch.relu(self.fc1(x)))
         x = self.fc2(x)

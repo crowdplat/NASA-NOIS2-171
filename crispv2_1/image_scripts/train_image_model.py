@@ -59,7 +59,6 @@ class ImageDataset(Dataset):
             image = np.load(image_path)  # Load NumPy array
             if image.ndim != 2:  # Ensure it's grayscale
                 raise ValueError(f"Invalid shape {image.shape} for grayscale image {image_path}")
-            # return Image.fromarray(image.astype(np.uint8)*255, mode="L")  # Convert to PIL grayscale
             return Image.fromarray((image * 255).astype(np.uint8), mode="L")  # Convert to PIL grayscale
         else:
             return Image.open(image_path).convert("L")  # Load regular image file
