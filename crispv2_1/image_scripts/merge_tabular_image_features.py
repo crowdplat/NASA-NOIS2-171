@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 
@@ -18,7 +17,7 @@ def normalize_except_exclude(tabular_data_df, exclude_vars):
     columns_to_normalize = tabular_data_df.drop(columns=exclude_vars)
 
     # Normalize the remaining columns using MinMaxScaler
-    scaler = MinMaxScaler()  # Use StandardScaler() for standardization instead
+    scaler = MinMaxScaler()  
     normalized_columns = scaler.fit_transform(columns_to_normalize)
 
     # Create a DataFrame from the normalized data
@@ -66,30 +65,56 @@ def merge_environments(gradcam_features_df, tabular_data_df, subject_key, env_co
         merged_dfs.append(merged)
     
     # Combine all merged DataFrames
-    final_merged = pd.concat(merged_dfs, ignore_index=True)
-    return final_merged
+    return pd.concat(merged_dfs, ignore_index=True)
+
+def log_alignment_summary(tabular_df, gradcam_df, subject_key):
+    """
+        Logs summary of alignment between tabular and GradCAM datasets using the subject key.
+    """
+    tabular_ids = set(tabular_df[subject_key].astype(str))
+    gradcam_ids = set(gradcam_df[subject_key].astype(str))
+    common_ids = tabular_ids & gradcam_ids
+    only_in_tabular = sorted(tabular_ids - gradcam_ids)
+    only_in_gradcam = sorted(gradcam_ids - tabular_ids)
+
+    print(f"[INFO] Merging tabular and image features on key: '{subject_key}'")
+    print(f"[INFO] Total tabular samples: {len(tabular_ids)}")
+    print(f"[INFO] Total image samples: {len(gradcam_ids)}")
+    print(f"[INFO] Retained common samples: {len(common_ids)}")
+    print(f"[INFO] Dropped tabular-only samples: {len(only_in_tabular)}")
+    print(f"[INFO] Dropped image-only samples: {len(only_in_gradcam)}")
+
+    # Show mismatch subject keys
+    if only_in_tabular:
+        print(" - Tabular-only sample IDs:", ", ".join(only_in_tabular[:10]) + (" ..." if len(only_in_tabular) > 10 else ""))
+    if only_in_gradcam:
+        print(" - Image-only sample IDs:", ", ".join(only_in_gradcam[:10]) + (" ..." if len(only_in_gradcam) > 10 else ""))
+
 
 def save_merged_features(config):
     """
-    Combine tabular and image(gradcam) features based on subject key/sample
+        Combine tabular and image(gradcam) features based on subject key/sample
     """
     tabular_data_df = pd.read_pickle(config["image_data"]["tabular_features_path"])
     gradcam_features_df = pd.read_pickle(config["image_data"]["gradcam_features_save_path"])
     
     subject_key = config["data_options"]["subject_keys"]
     target_var = config["data_options"]["targets"]
-    environments = config["data_options"]["environments"][0]  # Assuming single environment column
+    environments = config["data_options"]["environments"][0]
     exclude = config["data_options"]["exclude"]
     
-    print("Tabular", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
+    # Standardize keys
+    tabular_data_df[subject_key] = tabular_data_df[subject_key].astype(str)
+    gradcam_features_df[subject_key] = gradcam_features_df[subject_key].astype(str)
+
+    # Log sample alignment
+    log_alignment_summary(tabular_data_df, gradcam_features_df, subject_key)
     
-    # Find overlapping columns
+    # Drop overlapping feature columns
     overlap_columns = tabular_data_df.columns.intersection(gradcam_features_df.columns).tolist()
-    if (subject_key in overlap_columns) or (environments in overlap_columns):
-        overlap_columns.remove(subject_key)
-        overlap_columns.remove(environments)
-    
-    # Remove overlapping columns from tabular data
+    for col in [subject_key, environments]:
+        if col in overlap_columns:
+            overlap_columns.remove(col)
     tabular_data_df = tabular_data_df.drop(columns=overlap_columns)
 
     print("Tabular features", tabular_data_df.shape, "GradCAM features", gradcam_features_df.shape)
@@ -107,7 +132,6 @@ def save_merged_features(config):
     # Normalize features (excluding specified columns)
     exclude_vars = list(set(exclude + target_var + [environments, environments+'_img', environments+'_tabular'] + ['num_activation_clusters']))
     merged_features_df = normalize_except_exclude(merged_features_df, exclude_vars)
-    print("Merged data", merged_features_df.shape)
 
     # Remove environments variable columns (_img, _tabular)
     merged_features_df = merged_features_df.drop(columns=[environments+'_img', environments+'_tabular'])
