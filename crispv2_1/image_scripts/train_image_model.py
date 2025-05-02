@@ -18,16 +18,18 @@ from sklearn.model_selection import StratifiedKFold
 class ImageDataset(Dataset):
     """ Custom Dataset for Grayscale Image Classification """
 
-    def __init__(self, image_dir, labels_csv, transform=None, augment=False):
+    def __init__(self, image_dir, target_label, labels_csv, transform=None, augment=False):
         """
         Args:
             image_dir (str): Path to the directory containing images (.png, .jpg, or .npy).
+            target_label (str): Column name of the target variable in the labels_csv
             labels_csv (str): Path to CSV file with image filenames and labels.
             transform (callable, optional): Transform to be applied on an image.
             augment (bool): Whether to apply data augmentation.
         """
 
         self.image_dir = image_dir
+        self.target_label=target_label
         self.data = pd.read_csv(labels_csv)
         self.image_shape = (224, 224)
         
@@ -65,7 +67,7 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         img_name = os.path.join(self.image_dir, self.data.iloc[idx]['image_name']) # Get image filename
-        label = torch.tensor(self.data.loc[idx, 'label'], dtype=torch.float32)  # Get label
+        label = torch.tensor(self.data.loc[idx, self.target_label], dtype=torch.float32)  # Get label
 
         image = self.load_image(img_name)  # Load image
         image = self.transform(image)  # Apply transforms
@@ -104,6 +106,7 @@ def train_image_model(config):
             config = json.load(f)
     
     # Extract paths and parameters
+    target_label = config['data_options']['targets'][0]
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
     model_type = config["image_data"].get("model_type", "DenseNet121")
@@ -115,7 +118,7 @@ def train_image_model(config):
     augmentation = config["image_data"].get("augmentation", False)
 
     # Load dataset
-    full_dataset = ImageDataset(image_dir, labels_csv)
+    full_dataset = ImageDataset(image_dir, target_label, labels_csv)
 
     # Split dataset into train and validation
     train_size = int(split_ratio * len(full_dataset))
@@ -123,7 +126,7 @@ def train_image_model(config):
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
 
     # Wrap train dataset with augmentations
-    train_dataset.dataset = ImageDataset(image_dir, labels_csv, augment=augmentation)
+    train_dataset.dataset = ImageDataset(image_dir, target_label, labels_csv, augment=augmentation)
 
     # Create DataLoaders
     full_dataset_loader = DataLoader(full_dataset, batch_size=batch_size, shuffle=True)
@@ -140,7 +143,7 @@ def train_image_model(config):
         print(f"Running image model {model_type}")
         model = CNN_Scratch().to(device)
 
-    # Compute class weights (new code)
+    # Compute class weights
     train_labels_list = [label for _, label in train_dataset]
     train_labels_array = np.array(train_labels_list)
     class_weights = compute_class_weight(
@@ -249,6 +252,7 @@ def train_image_model_loocv(config):
             config = json.load(f)
     
     # Extract parameters and paths
+    target_label = config['data_options']['targets'][0]
     image_dir = config["image_data"]["image_dir"]
     labels_csv = config["image_data"]["labels_csv"]
     model_type = config["image_data"].get("model_type", "DenseNet121")
@@ -264,8 +268,8 @@ def train_image_model_loocv(config):
     total_samples = len(labels_df)
     
     # Create datasets: training with augmentation and validation without.
-    train_dataset_full = ImageDataset(image_dir, labels_csv, augment=augmentation)
-    val_dataset_full = ImageDataset(image_dir, labels_csv, augment=False)
+    train_dataset_full = ImageDataset(image_dir, target_label, labels_csv, augment=augmentation)
+    val_dataset_full = ImageDataset(image_dir, target_label, labels_csv, augment=False)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
@@ -396,6 +400,7 @@ def train_image_model_loocv(config):
 
 def train_image_model_kfold(config):
     # Parameters
+    target_label = config['data_options']['targets'][0]
     k_folds = config["image_data"].get("k_folds", 3)
     model_type = config["image_data"].get("model_type", "DenseNet121")
     batch_size = config["image_data"].get("batch_size", 16)
@@ -408,9 +413,9 @@ def train_image_model_kfold(config):
     verbose = config.get("verbose", 1)
 
     # Dataset & labels
-    full_dataset = ImageDataset(image_dir, labels_csv, augment=False)  # Base dataset without augmentation
+    full_dataset = ImageDataset(image_dir, target_label, labels_csv, augment=False)  # Base dataset without augmentation
     labels_df = pd.read_csv(labels_csv)
-    targets = labels_df['label'].values  # Assuming 'label' column
+    targets = labels_df[target_label].values  # Get 'label' column
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Stratified K-Fold setup
@@ -426,7 +431,7 @@ def train_image_model_kfold(config):
 
         # Apply augmentation to the training subset if enabled
         if augmentation:
-            train_subset.dataset = ImageDataset(image_dir, labels_csv, augment=True)
+            train_subset.dataset = ImageDataset(image_dir, target_label, labels_csv, augment=True)
 
         # DataLoaders
         train_loader = DataLoader(train_subset, batch_size=batch_size, shuffle=True)
