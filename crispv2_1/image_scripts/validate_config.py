@@ -75,14 +75,14 @@ def validate_json_config(config):
             errors.append(f"'apply_gradcam' in 'image_model_gradcam' should be a boolean, found {type(gradcam_config['apply_gradcam']).__name__}")
         if 'gradcam_output_save_path' in gradcam_config:
             if not os.path.isdir(gradcam_config['gradcam_output_save_path']):
-                warnings.append(f"'gradcam_output_save_path' directory does not exist: {gradcam_config['gradcam_output_save_path']} (will be created during execution).")
+                warnings.append(f"'gradcam_output_save_path' directory does not exist: {gradcam_config['gradcam_output_save_path']} (will be created during execution if flag true).")
 
     # Validate 'gradcam_features_explainer'
     explainer_config = image_data.get('gradcam_features_explainer', {})
     if explainer_config:
         if 'save_path' in explainer_config:
             if not os.path.isdir(explainer_config['save_path']):
-                warnings.append(f"'save_path' in 'gradcam_features_explainer' does not exist: {explainer_config['save_path']} (will be created during execution).")
+                warnings.append(f"'save_path' in 'gradcam_features_explainer' does not exist: {explainer_config['save_path']} (will be created during execution if flag true).")
         for boolean_field in ['show_clusters', 'show_com']:
             if boolean_field in explainer_config and not isinstance(explainer_config[boolean_field], bool):
                 errors.append(f"'{boolean_field}' in 'gradcam_features_explainer' should be a boolean, found {type(explainer_config[boolean_field]).__name__}")
