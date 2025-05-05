@@ -156,15 +156,15 @@ Following is a sample/template config JSON required for **multimodal** experimen
         "image_model_training_type": "train_test_split", 
         "split_ratio": 0.85,
         "augmentation": true, 
-        "batch_size": 64,
+        "batch_size": 32,
         "learning_rate": 0.0001,
         "num_epochs": 100,
         "model_save_path": "image_model_saved/image_model.pth",
         "gradcam_features_save_path": "data/image_features.pkl",
-        "tabular_features_path": "data/tabular_db.pickle",
+        "tabular_features_path": "data/example_tabular_db_for_multimodal_exp.pickle",
 
         "image_model_gradcam": {
-            "apply_gradcam": true,
+            "apply_gradcam": false,
             "gradcam_output_save_path": "data/gradcam_outputs"
         },
 
