@@ -116,6 +116,7 @@ def train_image_model(config):
     model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     split_ratio = config["image_data"].get("split_ratio", 0.8)  # Default: 80% train, 20% val
     augmentation = config["image_data"].get("augmentation", False)
+    seed = config["feature_selection_options"].get("seed", 123)
 
     # Load dataset
     full_dataset = ImageDataset(image_dir, target_label, labels_csv)
@@ -123,7 +124,10 @@ def train_image_model(config):
     # Split dataset into train and validation
     train_size = int(split_ratio * len(full_dataset))
     val_size = len(full_dataset) - train_size
-    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+
+    # Set the seed for reproducibility
+    generator = torch.Generator().manual_seed(seed)
+    train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size], generator=generator)
 
     # Wrap train dataset with augmentations
     train_dataset.dataset = ImageDataset(image_dir, target_label, labels_csv, augment=augmentation)
