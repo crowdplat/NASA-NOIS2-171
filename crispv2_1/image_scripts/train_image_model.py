@@ -9,6 +9,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Subset, random_split
 from torchvision import transforms
 import os
+import random
 from image_scripts.image_classifier import TransferLearningImageClassifier, CNN_Scratch 
 import json
 from sklearn.metrics import roc_auc_score, f1_score
@@ -73,7 +74,13 @@ class ImageDataset(Dataset):
         image = self.transform(image)  # Apply transforms
 
         return image, label
-    
+
+def set_global_seed(seed=123):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)    
 
 def save_model(model, optimizer, model_save_path, save_optimizer=False):
     """ Saves the trained model and optimizer state (if required). """
@@ -117,6 +124,9 @@ def train_image_model(config):
     split_ratio = config["image_data"].get("split_ratio", 0.8)  # Default: 80% train, 20% val
     augmentation = config["image_data"].get("augmentation", False)
     seed = config["feature_selection_options"].get("seed", 123)
+
+    # Set Seed
+    set_global_seed(seed)
 
     # Load dataset
     full_dataset = ImageDataset(image_dir, target_label, labels_csv)
@@ -266,6 +276,10 @@ def train_image_model_loocv(config):
     augmentation = config["image_data"].get("augmentation", False)
     model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     verbose = config.get("verbose", 0)
+    seed = config["feature_selection_options"].get("seed", 123)
+
+    # Set Seed
+    set_global_seed(seed)
     
     # Load CSV to determine dataset size.
     labels_df = pd.read_csv(labels_csv)
@@ -415,6 +429,10 @@ def train_image_model_kfold(config):
     labels_csv = config["image_data"]["labels_csv"]
     model_save_path = config["image_data"].get("model_save_path", os.path.join("image_model_saved", "image_model.pth"))
     verbose = config.get("verbose", 1)
+    seed = config["feature_selection_options"].get("seed", 123)
+
+    # Set Seed
+    set_global_seed(seed)
 
     # Dataset & labels
     full_dataset = ImageDataset(image_dir, target_label, labels_csv, augment=False)  # Base dataset without augmentation
